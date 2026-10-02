@@ -643,31 +643,32 @@ function drawModal() {
     lineBtn({ x: p.x + 170, y: p.y + 162, w: 140, h: 38 }, '重新开始', () => resetGame(), '#8a5a30', 'reset');
 
   } else if (type === 'help') {
-    const p = panel(360, 300);
+    const p = panel(Math.min(VW - 20, 400), Math.min(VH - 20, 400));
     drawPanel(p, '游戏说明');
-    ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.font = '11px sans-serif'; ctx.fillStyle = '#e6eedd';
     const lines = [
       '■ 操作',
-      '  · 左下摇杆移动；也可以点地面自动走过去。',
-      '  · 右下「使用」键：对目标生效（收获/浇水/买东西…）。',
-      '  · 底部五个格子切换工具；键盘 1~5 也行。',
-      '■ 一天的流程',
-      '  锄头翻土 → 换「双手」点空地播种 → 水壶浇水 → 每天浇水 → 成熟后双手收获。',
-      '  作物必须每天浇水才会长；换季还没成熟会枯死。',
-      '  走到屋子门口按「使用」睡觉，体力/时间才会推进。',
+      '  · 左下摇杆移动，也可点地面自动走',
+      '  · 右下「使用」键对目标生效',
+      '  · 底部五格切换工具（键盘 1~5 同效）',
+      '■ 种田流程',
+      '  锄头翻土 → 双手播种 → 水壶浇水',
+      '  每天浇水才会长，成熟后双手收获',
+      '  走到屋门口按「使用」睡觉推进一天',
       '■ 赚钱',
-      '  走到商店柜台前按「使用」，买种子、卖作物/鸡蛋/牛奶/羊毛。',
-      '  斧头砍树得木材，镐子敲石得石头。',
+      '  商店柜台前按「使用」买卖作物',
+      '  斧头砍树得木材，镐子敲石得石头',
       '■ 牧场',
-      '  商店第三个页签「牧场」可以买鸡（¥500）、绵羊（¥1200）、奶牛（¥1800），',
-      '  每种有上限，买下后每天产出，走近它按「使用」收取，卖给商店。',
-      '  作物和动物都要靠「睡觉」推进——体力耗尽也记得回屋。',
+      '  商店「牧场」页签买鸡 / 绵羊 / 奶牛',
+      '  买下后每天产出，走近按「使用」收取',
       '■ 规则',
-      '  每季 8 天、一年 4 季；体力用光只能睡觉。数据自动存档。'
+      '  每季 8 天、一年 4 季；体力用光只能睡觉',
+      '  进度自动保存到本地存档'
     ];
-    for (let i = 0; i < lines.length; i++) ctx.fillText(lines[i], p.x + 18, p.y + 44 + i * 15);
+    const lh = clamp(Math.floor((p.h - 96) / lines.length), 11, 18);
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.font = '11px sans-serif'; ctx.fillStyle = '#e6eedd';
+    for (let i = 0; i < lines.length; i++) ctx.fillText(lines[i], p.x + 16, p.y + 40 + i * lh);
     ctx.textBaseline = 'middle';
-    lineBtn({ x: p.x + p.w / 2 - 60, y: p.y + p.h - 44, w: 120, h: 32 }, '知道了', () => { modal = { type: 'menu' }; });
+    lineBtn({ x: p.x + p.w / 2 - 60, y: p.y + p.h - 40, w: 120, h: 30 }, '知道了', () => { modal = { type: 'menu' }; });
 
   } else if (type === 'settings') {
     const p = panel(340, 330);
