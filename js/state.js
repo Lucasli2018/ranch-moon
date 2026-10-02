@@ -185,10 +185,31 @@ function switchScene(key, sx, sy) {
   beep(520, .1); beep(700, .09);
 }
 
-/* 出生点：屋子门前 */
+/* 出生格：扫描场景里 T.DOOR（门）最宽的那一行，取门段正下方那格。
+   直接读地图而不是写死坐标 → 地图一改出生点也不会偏 */
+function doorFrontTile() {
+  const gx0 = Math.floor(player.x / TILE), gy0 = Math.floor(player.y / TILE);
+  let best = null;
+  for (let ty = 0; ty < MAP_H; ty++) {
+    if (!map || !map[ty]) continue;
+    const xs = [];
+    for (let tx = 0; tx < MAP_W; tx++) if (map[ty][tx] === T.DOOR) xs.push(tx);
+    if (xs.length && (!best || xs.length > best.xs.length)) best = { ty: ty, xs: xs };
+  }
+  if (!best) return { tx: gx0, ty: gy0 };
+  return {
+    tx: Math.floor((best.xs[0] + best.xs[best.xs.length - 1]) / 2),
+    ty: best.ty + 1                       // 门正下方那一格（屋前）
+  };
+}
+
+/* 出生点：屋门正下方那格 → 脚贴格底、整只身体落在站格内，朝向门（面前格就是门） */
 function spawnPlayer() {
-  player.x = 15.5 * TILE; player.y = 11.6 * TILE; player.dir = 2;
-  player.moving = false; player.anim = 0;
+  const d = doorFrontTile();
+  player.x = (d.tx + 0.5) * TILE;
+  player.y = d.ty * TILE + TILE - 3;
+  player.dir = 0;
+  player.moving = false; player.anim = 0; player.vx = 0; player.vy = 0;
   snapCam();
 }
 

@@ -43,6 +43,7 @@ function onResize() {
 
 /* 相机直接定位到玩家（门口/出生点），避免切场景镜头从 0 起飞造成「位置跳变」 */
 function snapCam() {
+  if (!LH || !LH.worldH) return;        // 布局还没算出来（init 里 onResize 会再定位一次），避免 cam 变 NaN
   const maxX = Math.max(0, MAP_W * TILE - VW);
   const maxY = Math.max(0, MAP_H * TILE - LH.worldH);
   cam.x = clamp(player.x - VW / 2, 0, maxX);

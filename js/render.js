@@ -140,12 +140,18 @@ function drawCrop(tx, ty, sx, sy) {
   }
 }
 
+/* ======================= 实体网格对齐 ======================= */
+/* 所有实体（人 / NPC / 动物）都按「站格」对齐：
+   水平取所在格中心，脚底贴格底 —— 和玩家、格子高亮框严格同一套坐标 */
+function gridX(v) { return Math.floor(v) * TILE + TILE / 2; }
+function gridY(v) { return Math.floor(v) * TILE + TILE - 3; }
+
 /* ======================= 动物绘制 ======================= */
 const ANIMAL_IMG = { chicken: 'an_chicken', cow: 'an_cow', sheep: 'an_sheep' };
 const ANIMAL_SIZE = { chicken: [20, 20], cow: [28, 22], sheep: [26, 22] };
 function drawAnimal(a) {
-  const x = a.x * TILE, y = a.y * TILE;
-  ctx.fillStyle = 'rgba(0,0,0,.18)'; ctx.fillRect(x - 6, y + 4, 12, 3);
+  const x = gridX(a.x), y = gridY(a.y);
+  ctx.fillStyle = 'rgba(0,0,0,.18)'; ctx.fillRect(x - 6, y + 1, 12, 3);
   const sz = ANIMAL_SIZE[a.kind] || [20, 18];
   // 未购买的动物显示为半透明"影子"，提示这里可以买
   ctx.globalAlpha = a.owned ? 1 : 0.28;
@@ -162,54 +168,63 @@ function drawAnimal(a) {
 
 /* ======================= NPC 绘制 ======================= */
 function drawNpc(n) {
-  const x = n.x * TILE, y = n.y * TILE;
-  ctx.fillStyle = 'rgba(0,0,0,.18)'; ctx.fillRect(x - 6, y + 4, 12, 3);
+  const x = gridX(n.x), y = gridY(n.y);
+  ctx.fillStyle = 'rgba(0,0,0,.18)'; ctx.fillRect(x - 10, y + 1, 20, 3);
   const bob = Math.sin(frameNo * 0.05 + n.x) > 0.9 ? 1 : 0;   // 偶尔轻晃，像在呼吸
-  if (!drawAsset(n.img, x - 8, y - 17 - bob, 16, 18)) {
-    ctx.fillStyle = '#c88'; ctx.fillRect(x - 5, y - 12, 10, 12);
-    ctx.fillStyle = '#f3c9a0'; ctx.fillRect(x - 4, y - 16, 8, 5);
+  if (!drawAsset(n.img, x - 16, y - 34 - bob, 32, 36)) {       // 与玩家同步放大一倍
+    ctx.save();
+    ctx.translate(x, y - bob);
+    ctx.scale(2, 2);
+    ctx.fillStyle = '#c88'; ctx.fillRect(-5, -12, 10, 12);
+    ctx.fillStyle = '#f3c9a0'; ctx.fillRect(-4, -16, 8, 5);
+    ctx.restore();
   }
   // 头顶感叹号提示可对话
   const bob2 = Math.sin(frameNo * 0.09 + n.x) * 1.2;
-  ctx.fillStyle = '#ffd24a'; ctx.fillRect(x - 1, y - 24 + bob2, 3, 5);
-  ctx.fillStyle = '#fff'; ctx.fillRect(x - 1, y - 18 + bob2, 3, 2);
+  ctx.fillStyle = '#ffd24a'; ctx.fillRect(x - 2, y - 45 + bob2, 5, 8);
+  ctx.fillStyle = '#fff'; ctx.fillRect(x - 2, y - 35 + bob2, 5, 3);
 }
 
 /* ======================= 玩家绘制 ======================= */
 function drawToolInHand(x, top, d) {
-  const ox = d === 1 ? 7 : d === 3 ? -7 : 0;
-  const oy = d === 0 ? -3 : d === 1 ? 2 : d === 2 ? 4 : 0;
+  const ox = d === 1 ? 14 : d === 3 ? -14 : 0;
+  const oy = d === 0 ? -6 : d === 1 ? 4 : d === 2 ? 8 : 0;
   const px = x + ox, py = top + oy;
-  if (tool === 'hoe') { ctx.fillStyle = '#8a5a30'; ctx.fillRect(px - 1, py - 4, 2, 7); ctx.fillStyle = '#b8b0a0'; ctx.fillRect(px - 3, py - 6, 5, 3); }
-  else if (tool === 'can') { ctx.fillStyle = '#3f8fc0'; ctx.fillRect(px - 4, py - 3, 7, 6); ctx.fillStyle = '#7fd0ff'; ctx.fillRect(px - 6, py - 1, 3, 2); }
-  else if (tool === 'axe') { ctx.fillStyle = '#8a5a30'; ctx.fillRect(px - 1, py - 5, 2, 8); ctx.fillStyle = '#c0c8cc'; ctx.fillRect(px - 4, py - 7, 8, 3); }
-  else if (tool === 'pick') { ctx.fillStyle = '#b0b8bd'; ctx.fillRect(px - 4, py - 5, 8, 2); ctx.fillRect(px - 1, py - 3, 2, 8); }
-  else { ctx.fillStyle = '#f3c9a0'; ctx.fillRect(px - 2, py - 2, 5, 5); }
+  if (tool === 'hoe') { ctx.fillStyle = '#8a5a30'; ctx.fillRect(px - 2, py - 8, 4, 14); ctx.fillStyle = '#b8b0a0'; ctx.fillRect(px - 6, py - 12, 10, 6); }
+  else if (tool === 'can') { ctx.fillStyle = '#3f8fc0'; ctx.fillRect(px - 8, py - 6, 14, 12); ctx.fillStyle = '#7fd0ff'; ctx.fillRect(px - 12, py - 2, 6, 4); }
+  else if (tool === 'axe') { ctx.fillStyle = '#8a5a30'; ctx.fillRect(px - 2, py - 10, 4, 16); ctx.fillStyle = '#c0c8cc'; ctx.fillRect(px - 8, py - 14, 16, 6); }
+  else if (tool === 'pick') { ctx.fillStyle = '#b0b8bd'; ctx.fillRect(px - 8, py - 10, 16, 4); ctx.fillRect(px - 2, py - 6, 4, 16); }
+  else { ctx.fillStyle = '#f3c9a0'; ctx.fillRect(px - 4, py - 4, 10, 10); }
 }
 const PLAYER_IMG = { 0: 'player_up', 1: 'player_right', 2: 'player_down', 3: 'player_left' };
+const PLAYER_W = 32, PLAYER_H = 36;   // 人物放大一倍（源 16x18 → 32x36），手机端不再小如芝麻
 function drawPlayer() {
   const x = Math.round(player.x), y = Math.round(player.y);
   const d = player.dir;
   const bob = player.moving && (Math.floor(frameNo / 6) % 2) ? 1 : 0;
-  ctx.fillStyle = 'rgba(0,0,0,.2)'; ctx.fillRect(x - 6, y - 2, 12, 3);
-  // 图片素材 16x18（源 48px，向下取整保持锐利），底部对齐脚部
-  if (drawAsset(PLAYER_IMG[d], x - 8, y - 16 + bob, 16, 18)) return;
-  const top = y - 14 + bob;
+  ctx.fillStyle = 'rgba(0,0,0,.2)'; ctx.fillRect(x - 11, y - 2, 22, 3);
+  // 图片素材 32x36，底部对齐脚部
+  if (drawAsset(PLAYER_IMG[d], x - 16, y - 34 + bob, PLAYER_W, PLAYER_H)) { drawToolInHand(x, y - 28 + bob, d); return; }
+  ctx.save();
+  ctx.translate(x, y + bob);
+  ctx.scale(2, 2);
+  const top = -14;
   ctx.fillStyle = '#3c5f8a';
-  if (d !== 0) { ctx.fillRect(x - 4, top + 10, 3, 4 - bob); ctx.fillRect(x + 1, top + 10, 3, 4 - bob); }
-  else { ctx.fillStyle = '#34507a'; ctx.fillRect(x - 4, top + 11, 8, 3); }
-  ctx.fillStyle = '#4f8fc0'; ctx.fillRect(x - 5, top + 3, 10, 8);
-  ctx.fillStyle = '#e8e0cc'; ctx.fillRect(x - 4, top + 3, 8, 2);
-  ctx.fillStyle = '#f3c9a0'; ctx.fillRect(x - 4, top - 4, 8, 7);
-  if (d === 0) { ctx.fillStyle = '#3b2a20'; ctx.fillRect(x - 4, top - 5, 8, 6); }
-  else { ctx.fillStyle = '#5a3a24'; ctx.fillRect(x - 4, top - 5, 8, 3); ctx.fillRect(x - 4, top - 4, 8, 1); }
-  if (d === 2) { ctx.fillStyle = '#2b2b2b'; ctx.fillRect(x - 2, top - 1, 2, 2); ctx.fillRect(x + 1, top - 1, 2, 2); }
-  if (d === 1) { ctx.fillStyle = '#2b2b2b'; ctx.fillRect(x + 2, top - 1, 2, 2); }
-  if (d === 3) { ctx.fillStyle = '#2b2b2b'; ctx.fillRect(x - 4, top - 1, 2, 2); }
-  if (d === 2) ctx.fillStyle = '#d8452f'; else ctx.fillStyle = '#d8452f';
-  if (d === 2) ctx.fillRect(x - 5, top - 6, 10, 2);
-  else ctx.fillRect(x - 4 + (d === 1 ? 2 : d === 3 ? -2 : 0), top - 6, 8, 2);
-  drawToolInHand(x, top, d);
+  if (d !== 0) { ctx.fillRect(-4, top + 10, 3, 4); ctx.fillRect(1, top + 10, 3, 4); }
+  else { ctx.fillStyle = '#34507a'; ctx.fillRect(-4, top + 11, 8, 3); }
+  ctx.fillStyle = '#4f8fc0'; ctx.fillRect(-5, top + 3, 10, 8);
+  ctx.fillStyle = '#e8e0cc'; ctx.fillRect(-4, top + 3, 8, 2);
+  ctx.fillStyle = '#f3c9a0'; ctx.fillRect(-4, top - 4, 8, 7);
+  if (d === 0) { ctx.fillStyle = '#3b2a20'; ctx.fillRect(-4, top - 5, 8, 6); }
+  else { ctx.fillStyle = '#5a3a24'; ctx.fillRect(-4, top - 5, 8, 3); ctx.fillRect(-4, top - 4, 8, 1); }
+  if (d === 2) { ctx.fillStyle = '#2b2b2b'; ctx.fillRect(-2, top - 1, 2, 2); ctx.fillRect(1, top - 1, 2, 2); }
+  if (d === 1) { ctx.fillStyle = '#2b2b2b'; ctx.fillRect(2, top - 1, 2, 2); }
+  if (d === 3) { ctx.fillStyle = '#2b2b2b'; ctx.fillRect(-4, top - 1, 2, 2); }
+  ctx.fillStyle = '#d8452f';
+  if (d === 2) ctx.fillRect(-5, top - 6, 10, 2);
+  else ctx.fillRect(-4 + (d === 1 ? 2 : d === 3 ? -2 : 0), top - 6, 8, 2);
+  ctx.restore();
+  drawToolInHand(x, y - 28 + bob, d);
 }
 
 /* ======================= 静态地图烘焙（地面层 + 按行立体物层） ======================= */
@@ -248,20 +263,26 @@ function drawWorld() {
   const pal = SEASON_TINT[curSeason()];
   ctx.fillStyle = pal.grass; ctx.fillRect(0, LH.worldTop, VW, LH.worldH);
   ctx.drawImage(bake, -cam.x, LH.worldTop - cam.y);
-  // 水面动态波纹
+  // 水面动态波纹（与烘焙地图同一基准：worldTop + 世界 y − 相机）
   ctx.fillStyle = '#bfe6ff55';
   const wx0 = Math.max(0, Math.floor(cam.x / TILE)), wx1 = Math.min(MAP_W - 1, Math.ceil((cam.x + VW) / TILE));
   const wy0 = Math.max(0, Math.floor(cam.y / TILE)), wy1 = Math.min(MAP_H - 1, Math.ceil((cam.y + LH.worldH) / TILE));
   for (let ty = wy0; ty <= wy1; ty++) for (let tx = wx0; tx <= wx1; tx++) {
     if (map[ty][tx] !== T.WATER) continue;
     if ((((tx * 7 + ty * 13 + Math.floor(frameNo / 18)) % 4) === 0))
-      ctx.fillRect(tx * TILE - cam.x + 3, Math.round(ty * TILE - cam.y + 5 + Math.sin(frameNo * 0.05 + tx) * 3), 5, 1);
+      ctx.fillRect(tx * TILE - cam.x + 3,
+        Math.round(LH.worldTop + ty * TILE - cam.y + 5 + Math.sin(frameNo * 0.05 + tx) * 3), 5, 1);
   }
-  // 作物
+  /* ↓↓↓ 世界坐标层：一次 translate，实体全部用「世界坐标」画。
+     之前 NPC/动物/玩家各自画绝对坐标却没减相机 → 镜头一动就和地面脱开，
+     表现为「人物一动 NPC 就漂移」「出生点看着不在门口」 */
+  ctx.save();
+  ctx.translate(-cam.x, LH.worldTop - cam.y);
+  // 作物（世界坐标）
   const cx0 = Math.max(0, Math.floor(cam.x / TILE) - 1), cx1 = Math.min(MAP_W - 1, Math.ceil((cam.x + VW) / TILE) + 1);
   const cy0 = Math.max(0, Math.floor(cam.y / TILE) - 1), cy1 = Math.min(MAP_H - 1, Math.ceil((cam.y + LH.worldH) / TILE) + 1);
   for (let ty = cy0; ty <= cy1; ty++) for (let tx = cx0; tx <= cx1; tx++)
-    if (map[ty][tx] === T.FARM) drawCrop(tx, ty, Math.round(tx * TILE - cam.x), Math.round(ty * TILE - cam.y));
+    if (map[ty][tx] === T.FARM) drawCrop(tx, ty, tx * TILE, ty * TILE);
   // 目标高亮：明确告诉玩家「这一下会作用到这格」
   drawTargetMark();
   // 动物 + NPC + 玩家
@@ -271,19 +292,33 @@ function drawWorld() {
   // 粒子
   for (const p of dust) {
     ctx.globalAlpha = clamp(p.life, 0, 1);
-    ctx.fillStyle = p.col; ctx.fillRect(p.x - cam.x, p.y - cam.y - 6, 2, 2);
+    ctx.fillStyle = p.col; ctx.fillRect(p.x, p.y - 6, 2, 2);
   }
   ctx.globalAlpha = 1;
+  ctx.restore();
 }
 
-/* 目标格四角括号 + 呼吸描边，和 frontTile() 严格同一格 */
+/* 人物「面前那一格」的淡框：任何工具下都可见，玩家一眼知道会作用到哪 */
+function drawFrontMark() {
+  if (modal) return;
+  const f = frontTile();
+  if (!inMap(f.tx, f.ty)) return;
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,255,255,.20)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(f.tx * TILE + 1.5, f.ty * TILE + 1.5, TILE - 3, TILE - 3);
+  ctx.restore();
+}
+
+/* 目标格四角括号 + 呼吸描边，和 frontTile() 严格同一格（世界坐标层内调用） */
 function drawTargetMark() {
   const t = lastTarget;
+  drawFrontMark();
   if (!t || modal) return;
   const pulse = 0.55 + 0.45 * Math.sin(frameNo * 0.12);
   ctx.save();
   if (t.tx !== undefined) {
-    const x = Math.round(t.tx * TILE - cam.x), y = Math.round(t.ty * TILE - cam.y);
+    const x = Math.round(t.tx * TILE), y = Math.round(t.ty * TILE);
     ctx.strokeStyle = 'rgba(255,236,150,' + (0.45 + 0.35 * pulse).toFixed(3) + ')';
     ctx.lineWidth = 2;
     ctx.strokeRect(x + 1, y + 1, TILE - 2, TILE - 2);
@@ -291,19 +326,20 @@ function drawTargetMark() {
     ctx.lineWidth = 1;
     ctx.strokeRect(x + 3, y + 3, TILE - 6, TILE - 6);
   } else if (t.type === 'animal' && t.a) {
-    const x = t.a.x * TILE - cam.x, y = t.a.y * TILE - cam.y;
+    const x = gridX(t.a.x), y = gridY(t.a.y);
     ctx.strokeStyle = 'rgba(255,236,150,' + (0.5 + 0.4 * pulse).toFixed(3) + ')';
     ctx.lineWidth = 2;
     circle(Math.round(x), Math.round(y), 13 + pulse * 2);
   } else if (t.type === 'npc' && t.npc) {
-    const x = t.npc.x * TILE - cam.x, y = t.npc.y * TILE - cam.y;
+    const x = gridX(t.npc.x), y = gridY(t.npc.y);
     ctx.strokeStyle = 'rgba(255,236,150,' + (0.5 + 0.4 * pulse).toFixed(3) + ')';
     ctx.lineWidth = 2;
-    circle(Math.round(x), Math.round(y - 6), 14 + pulse * 2);
+    circle(Math.round(x), Math.round(y - 14), 22 + pulse * 2);   // NPC 放大后圈也放大
   } else if (t.type === 'shop') {
+    // 柜台在世界坐标 (23,25) 附近
     ctx.strokeStyle = 'rgba(255,236,150,' + (0.45 + 0.3 * pulse).toFixed(3) + ')';
     ctx.lineWidth = 2;
-    ctx.strokeRect(VW / 2 - 20, LH.worldTop + LH.worldH / 2 - 14, 40, 28);
+    ctx.strokeRect(23 * TILE - 20, 25 * TILE - 14, 40, 28);
   }
   ctx.restore();
 }

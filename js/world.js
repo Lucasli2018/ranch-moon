@@ -103,11 +103,21 @@ function frontTile() {
     ty: d === 0 ? ty - 1 : d === 2 ? ty + 1 : ty
   };
 }
-/* 优先作用面前那格；面前格不满足条件才退回最近的候选格 */
+/* 该格是否落在人物「朝向那一侧」：
+   (格中心 − 人物) · 朝向向量 的点积 > −0.45 → 算面前（略微 Allow 一点点侧向/身后余量） */
+function inFront(tx, ty) {
+  const d = player.dir;
+  const vx = d === 1 ? 1 : d === 3 ? -1 : 0;
+  const vy = d === 0 ? -1 : d === 2 ? 1 : 0;
+  if (!vx && !vy) return true;
+  const dx = tx + 0.5 - player.x / TILE, dy = ty + 0.5 - player.y / TILE;
+  return (dx * vx + dy * vy) > -0.45;
+}
+/* 优先作用面前那格；面前格不满足条件才退回收范围内「仍在面前」的候选格（不会跑到背后） */
 function pickTile(range, test) {
   const f = frontTile();
   if (inMap(f.tx, f.ty) && test(f.tx, f.ty)) return { tx: f.tx, ty: f.ty };
-  const s = scanTiles(range, test);
+  const s = scanTiles(range, test, true);
   return s ? { tx: s.tx, ty: s.ty } : null;
 }
 let lastTarget = null;   // 供渲染高亮「这一下会作用到这格」
@@ -116,8 +126,8 @@ function updateTarget() {
   if (modal || !S) { lastTarget = null; return; }
   lastTarget = findTarget();
 }
-/* 半径（格）内符合条件的格子，取最近一个 */
-function scanTiles(range, test) {
+/* 半径（格）内符合条件的格子，取最近一个；frontOnly=true 时只收「面前」那半边 */
+function scanTiles(range, test, frontOnly) {
   const pcx = player.x / TILE, pcy = player.y / TILE;
   const r = range;
   let best = null, bd = 1e9;
@@ -126,6 +136,7 @@ function scanTiles(range, test) {
   for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {
     const d = Math.hypot(tx + 0.5 - pcx, ty + 0.5 - pcy);
     if (d > r) continue;
+    if (frontOnly && !inFront(tx, ty)) continue;
     if (test(tx, ty)) { if (d < bd) { bd = d; best = { tx: tx, ty: ty, d: d }; } }
   }
   return best;
@@ -141,16 +152,17 @@ function findTarget() {
     const c = cropMap[ty][tx];
     return map[ty][tx] === T.FARM && c && !c.wetted;
   });
-  // 双手：优先成熟作物 → NPC → 动物 → 商店 → 空地播种
-  const mature = scanTiles(1.35, (tx, ty) => {
-    const c = cropMap[ty][tx]; return c && c.stage >= 4;
-  });
+  // 双手：优先「面前那格」的成熟作物 → 面前半边的成熟作物 → NPC → 动物 → 商店 → 面前空地播种 → 门（睡觉）
+  const f0 = frontTile();
+  const fMature = inMap(f0.tx, f0.ty) && cropMap[f0.ty][f0.tx] && cropMap[f0.ty][f0.tx].stage >= 4;
+  const mature = fMature ? { tx: f0.tx, ty: f0.ty } :
+    scanTiles(1.35, (tx, ty) => { const c = cropMap[ty][tx]; return c && c.stage >= 4; }, true);
   if (mature) return { tx: mature.tx, ty: mature.ty, type: 'crop' };
   const np = npcs.reduce((best, n) => {
     const d = Math.hypot(n.x * TILE - player.x, n.y * TILE - player.y);
     return (best === null || d < best.d) ? { d: d, n: n } : best;
   }, null);
-  if (np && np.d < 28) return { type: 'npc', npc: np.n };
+  if (np && np.d < 34) return { type: 'npc', npc: np.n };   // NPC 放大后交互距离同步放宽
   const an = animals.reduce((best, a) => {
     const d = Math.hypot(a.x * TILE - player.x, a.y * TILE - player.y);
     return (a.owned && (best === null || d < best.d)) ? { d: d, a: a } : best;
@@ -160,8 +172,23 @@ function findTarget() {
   if (sh) return { type: 'shop' };
   const empty = scanTiles(1.2, (tx, ty) => {
     const c = cropMap[ty][tx]; return map[ty][tx] === T.FARM && !c;
-  });
+  }, true);
   if (empty) return { tx: empty.tx, ty: empty.ty, type: 'plant' };
+  const dr = doorNear();
+  if (dr) return { tx: dr.tx, ty: dr.ty, type: 'door' };
+  return null;
+}
+
+/* 屋子/谷仓的门：面前那格是门 → 走两步到门口按「使用」就能睡。
+   站上门口那格朝门按也算，不用非得踩准一格 */
+function doorNear() {
+  const f = frontTile();
+  if (inMap(f.tx, f.ty) && map[f.ty][f.tx] === T.DOOR) return { tx: f.tx, ty: f.ty };
+  const tx0 = Math.floor(player.x / TILE), ty0 = Math.floor(player.y / TILE);
+  for (let dy = 0; dy <= 2; dy++) for (let dx = -1; dx <= 1; dx++) {
+    const tx = tx0 + dx, ty = ty0 - dy;
+    if (inMap(tx, ty) && map[ty][tx] === T.DOOR) return { tx: tx, ty: ty };
+  }
   return null;
 }
 
@@ -230,6 +257,7 @@ function doUse() {
     return;
   }
   if (tool === 'hand') {
+    if (t.type === 'door' || tt === T.DOOR) { sleepTick(); return; }
     if (t.type === 'crop' && c) {
       const n = 1 + (Math.random() < 0.35 ? 1 : 0);
       bagAdd(c.id, n);
@@ -253,7 +281,6 @@ function doUse() {
       puff(t.tx * TILE + 8, t.ty * TILE + 8, '#c9a86a', 6); beep(520, .08);
       return;
     }
-    if (tt === T.DOOR) { sleepTick(); return; }
   }
   toastMsg('这里没什么可做的');
 }
