@@ -1,0 +1,7 @@
+# 无头浏览器回归探针与临时截图（本地开发工具，不入库）
+_probe.mjs
+_hist.mjs
+_bak_final/
+_*.png
+_*.jpg
+notify_msg.txt

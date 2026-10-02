@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#12180f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="description" content="月光牧场 — 手机网页版牧场物语，种田、养鸡牛、四季经营。">
+<title>月光牧场</title>
+<link rel="stylesheet" href="css/style.css">
+<style>
+  /* 游戏页独占：画布撑满、隐藏开始页容器 */
+  #app { display: none; }
+  body { background: #0e150a; }
+</style>
+</head>
+<body>
+<div id="wrap"><canvas id="cv"></canvas></div>
+<div id="loading">载入月光牧场…</div>
+
+<!-- 依赖顺序：常量 → 工具 → 存档设置 → 音效 → 状态 → 玩法 → 渲染 → UI → 主循环 -->
+<script src="js/config.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/core.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/state.js"></script>
+<script src="js/world.js"></script>
+<script src="js/render.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>
