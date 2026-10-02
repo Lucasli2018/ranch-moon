@@ -58,20 +58,24 @@ html, body {
 }
 .brand p { margin-top: 6px; color: var(--dim); font-size: 12px; letter-spacing: 2px; }
 
-/* 月亮 */
+/* 主视觉：APP 图标（assets/icon-192.png，像素风，硬边放大） */
 .moon {
-  width: 74px; height: 74px; margin: 4px auto 2px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 34% 30%, #fffbe8, #ffe9a8 55%, #e8c96a);
-  box-shadow: 0 0 34px 10px rgba(255, 233, 168, .22);
-  position: relative;
+  display: block;
+  width: 84px; height: 84px; margin: 6px auto 4px;
+  border-radius: 18px;
+  image-rendering: pixelated;
+  image-rendering: -webkit-optimize-contrast;
+  box-shadow:
+    0 0 0 2px rgba(255, 233, 168, .18),
+    0 0 30px 8px rgba(255, 210, 74, .16),
+    0 5px 0 rgba(0, 0, 0, .32);
+  animation: moonbob 3.6s ease-in-out infinite;
 }
-.moon::after {
-  content: ''; position: absolute; inset: 0; border-radius: 50%;
-  background:
-    radial-gradient(circle at 62% 66%, rgba(190, 165, 100, .35) 0 8px, transparent 9px),
-    radial-gradient(circle at 40% 70%, rgba(190, 165, 100, .3) 0 6px, transparent 7px);
+@keyframes moonbob {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-5px); }
 }
+@media (prefers-reduced-motion: reduce) { .moon { animation: none; } }
 
 .menu { display: flex; flex-direction: column; gap: 10px; }
 

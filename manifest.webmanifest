@@ -1,0 +1,20 @@
+{
+  "name": "月光牧场 · Moon Ranch",
+  "short_name": "月光牧场",
+  "description": "月光牧场 — 手机网页版牧场物语，种田、养鸡牛、四季经营。",
+  "lang": "zh-CN",
+  "dir": "ltr",
+  "start_url": "index.html",
+  "scope": "./",
+  "id": "index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0e150a",
+  "theme_color": "#243d2a",
+  "icons": [
+    { "src": "assets/icon-64.png", "sizes": "64x64", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
