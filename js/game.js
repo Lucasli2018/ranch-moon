@@ -128,10 +128,12 @@ function update(dt) {
   frameNo++;
   if (toast.t > 0) toast.t -= dt;
   updateDust(dt);
+  updateTarget();
 
   if (!modal) {
-    // 时间流逝：HOUR_SEC 现实秒 = 1 游戏小时
-    S.hour += dt / (HOUR_SEC / 60);
+    // 时间流逝：现实 1 秒 = 游戏 1 分钟
+    S.minute += dt / REAL_SEC_PER_MIN;
+    while (S.minute >= 60) { S.minute -= 60; S.hour += 1; }
     if (S.hour >= DAY_HOURS && S.hour < DAY_HOURS + 0.8) {
       S.hour = DAY_HOURS;
       toastMsg('天黑了，回屋睡觉吧');

@@ -10,7 +10,8 @@ const CTRL_H = 64;                 // 底部操作区高度
 const TILE = 16;                   // 单格像素
 const MAP_W = 32, MAP_H = 30;      // 地图格数
 const STEP = 1.35;                 // 玩家每帧像素（约 80px/秒）
-const HOUR_SEC = 60;               // 现实 60 秒 = 游戏 1 小时
+const HOUR_SEC = 60;               // 现实 60 秒 = 游戏 1 小时（= REAL_SEC_PER_MIN × 60）
+const REAL_SEC_PER_MIN = 1;        // 现实 1 秒 = 游戏 1 分钟（一天 22 小时 ≈ 22 分钟真实时间）
 const DAY_HOURS = 22;              // 每天到 22 点强制结束
 const SEASON_DAYS = 8;             // 每季 8 天
 
