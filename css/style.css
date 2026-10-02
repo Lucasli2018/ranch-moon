@@ -18,11 +18,14 @@
 html, body {
   height: 100%;
   overflow: hidden;
+  position: fixed;           /* iOS 防橡皮筋滚动，游戏页触摸不再带动页面 */
+  width: 100%;
   background: var(--bg);
   color: var(--ink);
   font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
   user-select: none;
   -webkit-user-select: none;
+  -webkit-touch-callout: none;
   touch-action: none;
   overscroll-behavior: none;
 }
@@ -206,6 +209,8 @@ html, body {
   width: 100%; height: 100%;
   display: flex; align-items: center; justify-content: center;
   position: relative;
+  /* 刘海/Home 条安全区：画布整体避开 */
+  padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0) calc(env(safe-area-inset-bottom, 0) + 2px) env(safe-area-inset-left, 0);
 }
 #cv {
   display: block;

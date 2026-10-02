@@ -96,11 +96,34 @@ function pointerUp(e) {
   hoverPt = null;
 }
 
-cv.addEventListener('pointerdown', pointerDown);
-cv.addEventListener('pointermove', pointerMove);
-cv.addEventListener('pointerup', pointerUp);
-cv.addEventListener('pointercancel', pointerUp);
-cv.addEventListener('pointerleave', function () { hoverPt = null; });
+/* ---------------- 事件注册：PointerEvent 优先，老内核 touch/mouse 兜底 ---------------- */
+const HAS_PTR = typeof window.PointerEvent !== 'undefined';
+function fakeEv(t) {   // Touch → 伪 pointer 事件
+  return { clientX: t.clientX, clientY: t.clientY, pointerId: t.identifier != null ? t.identifier : 0, preventDefault: function () { } };
+}
+function bindInput() {
+  if (HAS_PTR) {
+    cv.addEventListener('pointerdown', pointerDown);
+    cv.addEventListener('pointermove', pointerMove);
+    cv.addEventListener('pointerup', pointerUp);
+    cv.addEventListener('pointercancel', pointerUp);
+    cv.addEventListener('pointerleave', function () { hoverPt = null; });
+  } else {
+    // 老安卓 X5 / 旧 WebView：只有 touch / mouse 事件
+    cv.addEventListener('touchstart', function (e) { e.preventDefault(); for (let i = 0; i < e.changedTouches.length; i++) pointerDown(fakeEv(e.changedTouches[i])); }, { passive: false });
+    cv.addEventListener('touchmove', function (e) { e.preventDefault(); for (let i = 0; i < e.changedTouches.length; i++) pointerMove(fakeEv(e.changedTouches[i])); }, { passive: false });
+    const tUp = function (e) { e.preventDefault(); for (let i = 0; i < e.changedTouches.length; i++) pointerUp(fakeEv(e.changedTouches[i])); };
+    cv.addEventListener('touchend', tUp, { passive: false });
+    cv.addEventListener('touchcancel', tUp, { passive: false });
+    cv.addEventListener('mousedown', pointerDown);
+    cv.addEventListener('mousemove', pointerMove);
+    window.addEventListener('mouseup', pointerUp);
+  }
+  // iOS 双指缩放 / 双击缩放
+  document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
+  document.addEventListener('dblclick', function (e) { e.preventDefault(); });
+}
+bindInput();
 cv.addEventListener('contextmenu', function (e) { e.preventDefault(); });
 
 /* ---------------- 键盘 ---------------- */
@@ -267,10 +290,15 @@ function init() {
   /* 图片素材：加载完成后重烘焙地图（加载前用程序化兜底） */
   loadAssets(function () { bakeMap(); });
 
-  /* BGM：首次任意交互后启动（浏览器要求音频须由用户手势触发） */
+  /* BGM：首次任意交互后启动；之后每次交互都尝试补启动（iOS/微信 AudioContext 解锁兜底） */
   const kickBgm = function () { startBgm(); };
-  window.addEventListener('pointerdown', kickBgm, { once: true });
-  window.addEventListener('keydown', kickBgm, { once: true });
+  window.addEventListener('pointerdown', kickBgm, { passive: true });
+  window.addEventListener('touchend', kickBgm, { passive: true });
+  window.addEventListener('keydown', kickBgm);
+  document.addEventListener('WeixinJSBridgeReady', kickBgm, { passive: true });
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden && Settings.d.music) startBgm();
+  });
 
   /* 调试 / 自动化接口 */
   window.MR = {
