@@ -178,7 +178,7 @@ function switchScene(key, sx, sy) {
   map = sc.map; cropMap = sc.cropMap; animals = sc.animals; npcs = sc.npcs || [];
   player.x = sx * TILE; player.y = sy * TILE;
   player.moving = false; player.dir = (sx < 3) ? 1 : 3;
-  cam.x = 0; cam.y = 0;
+  snapCam();
   bakeMap();
   saveGame();
   toastMsg('— ' + SCENE_NAME[key] + ' —');
@@ -189,7 +189,7 @@ function switchScene(key, sx, sy) {
 function spawnPlayer() {
   player.x = 15.5 * TILE; player.y = 11.6 * TILE; player.dir = 2;
   player.moving = false; player.anim = 0;
-  cam.x = 0; cam.y = 0;
+  snapCam();
 }
 
 /* ======================= 新游戏 ======================= */

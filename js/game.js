@@ -21,20 +21,33 @@ function toLogical(e) {
 }
 
 /* ---------------- 分辨率自适应 ---------------- */
+/* 逻辑分辨率固定基准 VW=480（所有设备布局一致），VH 按屏幕比例；
+   canvas 位图按 devicePixelRatio 放大 → 像素/文字高清；相机 snap 到玩家 */
 function onResize() {
-  const availW = window.innerWidth * 0.995, availH = window.innerHeight * 0.995;
-  VW = clamp(Math.round(availW), 300, 480);
-  VH = Math.round(clamp(VW * availH / availW, 300, 900));
-  const s = Math.min(availW / VW, availH / VH);
-  SCALE = clamp(Math.round(s), 1, 3);
-  cv.width = VW * SCALE; cv.height = VH * SCALE;
-  cv.style.width = (VW * SCALE) + 'px';
-  cv.style.height = (VH * SCALE) + 'px';
+  const dpr = clamp(window.devicePixelRatio || 1, 1, 3);
+  const availW = window.innerWidth, availH = window.innerHeight;
+  VW = 480;
+  VH = clamp(Math.round(VW * availH / availW), 320, 900);
+  const disp = Math.min(availW / VW, availH / VH);     // 等比缩放，避免压扁
+  const cssW = Math.round(VW * disp), cssH = Math.round(VH * disp);
+  cv.style.width = cssW + 'px'; cv.style.height = cssH + 'px';
+  cv.width = Math.round(cssW * dpr); cv.height = Math.round(cssH * dpr);
+  const k = cv.width / VW;                               // 均匀倍率
   ctx = cv.getContext('2d', { alpha: false });
-  ctx.setTransform(SCALE, 0, 0, SCALE, 0, 0);
+  ctx.setTransform(k, 0, 0, k, 0, 0);
   ctx.imageSmoothingEnabled = false;
   computeLayout();
   bakeMap();
+  if (player) snapCam();
+}
+
+/* 相机直接定位到玩家（门口/出生点），避免切场景镜头从 0 起飞造成「位置跳变」 */
+function snapCam() {
+  const maxX = Math.max(0, MAP_W * TILE - VW);
+  const maxY = Math.max(0, MAP_H * TILE - LH.worldH);
+  cam.x = clamp(player.x - VW / 2, 0, maxX);
+  cam.y = maxY > 0 ? clamp(player.y - LH.worldH / 2, 0, maxY)
+                   : -(LH.worldH - MAP_H * TILE) / 2;
 }
 
 /* ---------------- 指针输入 ---------------- */
@@ -58,6 +71,7 @@ function pointerDown(e) {
     joy.active = true; joy.id = e.pointerId;
     joy.ox = clamp((p.x - j.cx) / (j.r * 0.62), -1, 1);
     joy.oy = clamp((p.y - j.cy) / (j.r * 0.62), -1, 1);
+    tapTarget = null;
     return;
   }
   // 工具格
@@ -167,10 +181,16 @@ function update(dt) {
   // 移动方向
   let dx = 0, dy = 0;
   if (sceneCooldown > 0) sceneCooldown -= dt;
-  if (!joy.active && (inputs.left || inputs.right || inputs.up || inputs.down)) {
+  if (joy.active) {
+    // 摇杆：ox/oy 即方向向量（-1..1），带死区防误触
+    const dz = 0.18;
+    let jx = joy.ox, jy = joy.oy;
+    if (Math.hypot(jx, jy) < dz) { jx = 0; jy = 0; }
+    dx = jx; dy = jy;
+  } else if (inputs.left || inputs.right || inputs.up || inputs.down) {
     if (inputs.left) dx--; if (inputs.right) dx++;
     if (inputs.up) dy--; if (inputs.down) dy++;
-  } else if (!joy.active && tapTarget) {
+  } else if (tapTarget) {
     const ddx = tapTarget.x - player.x, ddy = tapTarget.y - player.y;
     const d = Math.hypot(ddx, ddy);
     if (d < 6) { tapTarget = null; }
