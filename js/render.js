@@ -322,39 +322,48 @@ function drawHUD() {
   ctx.fillStyle = '#4a7a55'; ctx.fillRect(0, H - 1, VW, 1);
 
   ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
-  // 左：日期
-  ctx.font = 'bold 12px sans-serif'; ctx.fillStyle = '#ffe9a8';
+  const IC = 14;                                  // 图标边长
+  const night = S.hour < 6 || S.hour >= 19;
+  let x = 6;
+  // 左：日期（cal + 文字）
+  drawIcon('cal', x + IC / 2, mid, IC); x += IC + 3;
+  ctx.font = 'bold 11px sans-serif'; ctx.fillStyle = '#ffe9a8';
   const wide = VW >= 350;
-  const dTxt = wide ? ('第' + S.year + '年 · ' + curSeason() + '季 第' + S.day + '天')
+  const dTxt = wide ? ('第' + S.year + '年 ' + curSeason() + '季 ' + S.day + '天')
     : (curSeason() + '季 ' + S.day + '天');
-  ctx.fillText(dTxt, 8, mid);
-  let x = 8 + ctx.measureText(dTxt).width + 8;
-  // 中：时钟
-  ctx.font = 'bold 12px sans-serif'; ctx.fillStyle = '#bfe6ff';
+  ctx.fillText(dTxt, x, mid); x += ctx.measureText(dTxt).width + 8;
+  // 中：时钟（clock + 时间）
+  drawIcon('clock', x + IC / 2, mid, IC); x += IC + 3;
+  ctx.fillStyle = '#bfe6ff';
   const ck = fmtClock(S.hour, S.minute);
   ctx.fillText(ck, x, mid); x += ctx.measureText(ck).width + 8;
-  // 右：金币（紧贴右上按钮区左边）
-  ctx.textAlign = 'right'; ctx.font = 'bold 12px sans-serif'; ctx.fillStyle = '#ffd24a';
-  ctx.fillText('¥' + S.gold, VW - 110, mid);
+  // 昼夜小标（宽屏才放，避免窄屏挤压）
+  if (wide) { drawIcon(night ? 'moon' : 'sun', x + IC / 2, mid, IC); x += IC + 8; }
 
-  // 右上三个功能键
-  const labels = { shop: '商店', bag: '背包', menu: '菜单' };
+  // 右：金币（coin 图标 + ¥，紧贴三键左边）
+  ctx.textAlign = 'right'; ctx.font = 'bold 12px sans-serif'; ctx.fillStyle = '#ffd24a';
+  const gtxt = '¥' + S.gold, gw = ctx.measureText(gtxt).width;
+  ctx.fillText(gtxt, VW - 110 - 2, mid);
+  drawIcon('coin', VW - 110 - 2 - gw - 2 - IC / 2, mid, IC);
+
+  // 右上三个功能键（图标化）
+  const hico = { shop: 'shop', bag: 'bag', menu: 'menu' };
   for (const b of LH.hudBtns) {
     const hot = hoverPt && inRect(hoverPt, b);
     ctx.fillStyle = hot ? 'rgba(120,190,120,.55)' : 'rgba(18,32,18,.72)';
     ctx.fillRect(b.x, b.y, b.w, b.h);
     ctx.strokeStyle = 'rgba(255,255,255,.22)'; ctx.lineWidth = 1;
     ctx.strokeRect(b.x + .5, b.y + .5, b.w - 1, b.h - 1);
-    ctx.textAlign = 'center'; ctx.fillStyle = hot ? '#ffffff' : '#dfe8d0'; ctx.font = '11px sans-serif';
-    ctx.fillText(labels[b.id], b.x + b.w / 2, b.y + b.h / 2 + 1);
+    drawIcon(hico[b.id], b.x + b.w / 2, b.y + b.h / 2, Math.min(b.w, b.h) - 6);
   }
   ctx.textAlign = 'left';
 }
 
 /* ======================= 操作控件 ======================= */
-function drawToolIcon(id, cx, cy) {
+function drawToolIcon(id, cx, cy, sz) {
+  sz = sz || 16;
   // 图片图标（tool_*.png），缺图退回程序化像素画
-  if (drawAsset('tool_' + id, cx - 8, cy - 8, 16, 16)) return;
+  if (drawAsset('tool_' + id, cx - sz / 2, cy - sz / 2, sz, sz)) return;
   ctx.save(); ctx.translate(Math.round(cx), Math.round(cy));
   if (id === 'hoe') { ctx.fillStyle = '#8a5a30'; ctx.fillRect(-1, -4, 2, 8); ctx.fillStyle = '#c2b8a4'; ctx.fillRect(-4, -6, 6, 3); }
   else if (id === 'can') { ctx.fillStyle = '#3f8fc0'; ctx.fillRect(-5, -3, 8, 7); ctx.fillStyle = '#7fd0ff'; ctx.fillRect(-7, -1, 3, 3); ctx.fillStyle = '#2a6a95'; ctx.fillRect(-5, -6, 8, 2); }
@@ -413,11 +422,18 @@ function drawPanel(p, title, sub) {
   ctx.fillStyle = '#e8e0c0'; ctx.font = 'bold 12px sans-serif'; ctx.fillText('×', p.x + p.w - 17, p.y + 13);
   return { bodyY: p.y + (sub ? 50 : 36) };
 }
-function lineBtn(r, label, fn, col) {
+function lineBtn(r, label, fn, col, ico) {
   ctx.fillStyle = col || '#5f8f56'; ctx.fillRect(r.x, r.y, r.w, r.h);
   ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = 1; ctx.strokeRect(r.x + .5, r.y + .5, r.w - 1, r.h - 1);
-  ctx.textAlign = 'center'; ctx.fillStyle = '#fff'; ctx.font = '12px sans-serif';
-  ctx.fillText(label, r.x + r.w / 2, r.y + r.h / 2);
+  ctx.textBaseline = 'middle';
+  if (ico) {
+    drawIcon(ico, r.x + 18, r.y + r.h / 2, r.h >= 32 ? 18 : 15);
+    ctx.textAlign = 'left'; ctx.fillStyle = '#fff'; ctx.font = '12px sans-serif';
+    ctx.fillText(label, r.x + 34, r.y + r.h / 2);
+  } else {
+    ctx.textAlign = 'center'; ctx.fillStyle = '#fff'; ctx.font = '12px sans-serif';
+    ctx.fillText(label, r.x + r.w / 2, r.y + r.h / 2);
+  }
   hit(r, fn);
 }
 /* 物品图标：ic_*.png 素材，缺图退回色块 */
@@ -495,11 +511,11 @@ function drawModal() {
     const p = panel(Math.min(VW - 40, 420), Math.min(VH - 56, 350));
     drawPanel(p, '农产品商店', '月光牧场 · 杂货铺 · ' + fmtGold(S.gold));
     const tx = p.x + 12, tw = (p.w - 24 - 12) / 3, ty = p.y + 32;
-    const tabs = [['seed', '买种子'], ['sell', '卖东西'], ['ranch', '牧场']];
+    const tabs = [['seed', '买种子', 'sack'], ['sell', '卖东西', 'shop'], ['ranch', '牧场', 'barn']];
     for (let i = 0; i < tabs.length; i++) {
       lineBtn({ x: tx + i * (tw + 6), y: ty, w: tw, h: 26 }, tabs[i][1],
         () => { modal.tab = tabs[i][0]; modal.page = 0; },
-        modal.tab === tabs[i][0] ? '#4f7f47' : '#3a5c37');
+        modal.tab === tabs[i][0] ? '#4f7f47' : '#3a5c37', tabs[i][2]);
     }
     const listY = ty + 34, rowH = 30;
     if (modal.tab === 'seed') {
@@ -619,12 +635,12 @@ function drawModal() {
     drawPanel(p, '暂停菜单');
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#e6eedd'; ctx.font = '11px sans-serif';
     ctx.fillText('第' + S.year + '年 · ' + curSeason() + '季 第' + S.day + '天   ' + fmtGold(S.gold), VW / 2, p.y + 46);
-    lineBtn({ x: p.x + 20, y: p.y + 62, w: 140, h: 38 }, '继续游戏', () => { modal = null; });
-    lineBtn({ x: p.x + 170, y: p.y + 62, w: 140, h: 38 }, '保存进度', () => { saveGame(); toastMsg('已保存到第' + curSlot + '号存档'); });
-    lineBtn({ x: p.x + 20, y: p.y + 112, w: 140, h: 38 }, '游戏说明', () => { modal = { type: 'help' }; });
-    lineBtn({ x: p.x + 170, y: p.y + 112, w: 140, h: 38 }, '设置', () => { modal = { type: 'settings' }; });
-    lineBtn({ x: p.x + 20, y: p.y + 162, w: 140, h: 38 }, '返回标题', () => { saveGame(); location.href = 'index.html'; });
-    lineBtn({ x: p.x + 170, y: p.y + 162, w: 140, h: 38 }, '重新开始', () => resetGame(), '#8a5a30');
+    lineBtn({ x: p.x + 20, y: p.y + 62, w: 140, h: 38 }, '继续游戏', () => { modal = null; }, '#4f7f47', 'play');
+    lineBtn({ x: p.x + 170, y: p.y + 62, w: 140, h: 38 }, '保存进度', () => { saveGame(); toastMsg('已保存到第' + curSlot + '号存档'); }, '#4f7f47', 'save');
+    lineBtn({ x: p.x + 20, y: p.y + 112, w: 140, h: 38 }, '游戏说明', () => { modal = { type: 'help' }; }, '#3a5c37', 'info');
+    lineBtn({ x: p.x + 170, y: p.y + 112, w: 140, h: 38 }, '设置', () => { modal = { type: 'settings' }; }, '#3a5c37', 'gear');
+    lineBtn({ x: p.x + 20, y: p.y + 162, w: 140, h: 38 }, '返回标题', () => { saveGame(); location.href = 'index.html'; }, '#3a5c37', 'exit');
+    lineBtn({ x: p.x + 170, y: p.y + 162, w: 140, h: 38 }, '重新开始', () => resetGame(), '#8a5a30', 'reset');
 
   } else if (type === 'help') {
     const p = panel(360, 300);
