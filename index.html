@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#12180f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="description" content="月光牧场 — 手机网页版牧场物语，种田、养鸡牛、四季经营。">
+<title>月光牧场 · 开始</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+  <div class="stage">
+
+    <div class="brand">
+      <div class="moon"></div>
+      <h1>月光牧场</h1>
+      <p>MOON RANCH · 手机上的牧场物语</p>
+    </div>
+
+    <!-- 主菜单（常驻，点按钮弹出选择框） -->
+    <div class="menu" id="menu">
+      <button class="btn gold"  id="btnNew">开始新游戏</button>
+      <button class="btn"       id="btnLoad">读取存档</button>
+      <button class="btn ghost" id="btnHelp">游戏说明</button>
+      <button class="btn ghost" id="btnSet">设置</button>
+    </div>
+
+    <div class="foot">v<span id="ver">1.2.0</span> · 数据保存在本机浏览器</div>
+  </div>
+</div>
+
+<!-- 弹窗层：选择框 / 说明 / 设置 / 确认 -->
+<div class="mask" id="mask" hidden>
+  <div class="dlg" id="dlg" role="dialog" aria-modal="true" aria-label="选择框">
+    <div class="dh">
+      <span class="dt" id="dlgTitle">选择</span>
+      <button class="dx" id="dlgClose" aria-label="关闭">✕</button>
+    </div>
+    <div class="db" id="dlgBody"></div>
+    <div class="df" id="dlgFoot"></div>
+  </div>
+</div>
+
+<script src="js/core.js"></script>     <!-- 设置 & 存档（开始页只用到这两个） -->
+<script src="js/start.js"></script>
+</body>
+</html>
