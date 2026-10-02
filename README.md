@@ -2,7 +2,7 @@
 
 手机浏览器里玩的网页版《牧场物语》。零依赖、零构建、纯 Canvas 像素风 —— 双击 `index.html` 就能玩，也可以丢到任意静态服务器 / Cloudflare Pages 上。
 
-> 当前版本 **v1.5.0**
+> 当前版本 **v1.5.1**
 
 ## 快速开始
 
@@ -126,6 +126,13 @@ ranch-moon/
 - 全局 `let`/`const` 跨 `<script>` 共享，**拆模块后必须扫一遍跨文件重复顶层声明**，否则运行时 `Identifier already declared`。
 
 ## 更新日志
+
+### v1.5.1（手机端修复）
+
+- **老内核触控兜底**：微信 X5 等旧 WebView 没有 PointerEvent，点击全部无效（表现为"卡住无法操作"）→ 输入层改为 PointerEvent 优先、无则绑定 touchstart/touchmove/touchend（Touch 映射伪 pointer 事件，多指 identifier 对齐摇杆），再兜底 mouse。
+- **iOS 手势防误触**：`gesturestart`（双指缩放）与 `dblclick` 一律 preventDefault；`html,body` 加 `position:fixed` 防橡皮筋滚动；`-webkit-touch-callout:none` 防长按菜单。
+- **安全区适配**：`#wrap` 用 `env(safe-area-inset-*)` 让画布避开刘海与 Home 条。
+- **BGM 修复**：AudioContext 解锁流程补齐（用户手势内 resume + 播一帧静音 buffer）；每次交互幂等重试启动（原来 `once` 只给一次机会，解锁失败就永远没声音）；音量从 0.028 提到 0.06（手机外放原音量几乎听不见）；微信内补 `WeixinJSBridgeReady` 钩子；切后台回来自动续播。
 
 ### v1.5.0
 
