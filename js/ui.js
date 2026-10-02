@@ -8,7 +8,7 @@ let LH = {};   // 当前布局
 function computeLayout() {
   const worldTop = HUD_H;
   const worldH = VH - HUD_H - CTRL_H;
-  const tw = 32, gap = 5, total = TOOLS.length * tw + (TOOLS.length - 1) * gap;
+  const tw = VW < 340 ? 30 : 35, gap = 5, total = TOOLS.length * tw + (TOOLS.length - 1) * gap;
   const x0 = (VW - total) / 2;
   const tools = [];
   for (let i = 0; i < TOOLS.length; i++) tools.push({ x: x0 + i * (tw + gap), y: VH - CTRL_H + 12, w: tw, h: tw });

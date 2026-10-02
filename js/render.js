@@ -235,6 +235,8 @@ function drawWorld() {
   const cy0 = Math.max(0, Math.floor(cam.y / TILE) - 1), cy1 = Math.min(MAP_H - 1, Math.ceil((cam.y + LH.worldH) / TILE) + 1);
   for (let ty = cy0; ty <= cy1; ty++) for (let tx = cx0; tx <= cx1; tx++)
     if (map[ty][tx] === T.FARM) drawCrop(tx, ty, Math.round(tx * TILE - cam.x), Math.round(ty * TILE - cam.y));
+  // 目标高亮：明确告诉玩家「这一下会作用到这格」
+  drawTargetMark();
   // 动物 + 玩家
   animals.slice().sort((a, b) => a.y - b.y).forEach(drawAnimal);
   drawPlayer();
@@ -244,6 +246,33 @@ function drawWorld() {
     ctx.fillStyle = p.col; ctx.fillRect(p.x - cam.x, p.y - cam.y - 6, 2, 2);
   }
   ctx.globalAlpha = 1;
+}
+
+/* 目标格四角括号 + 呼吸描边，和 frontTile() 严格同一格 */
+function drawTargetMark() {
+  const t = lastTarget;
+  if (!t || modal) return;
+  const pulse = 0.55 + 0.45 * Math.sin(frameNo * 0.12);
+  ctx.save();
+  if (t.tx !== undefined) {
+    const x = Math.round(t.tx * TILE - cam.x), y = Math.round(t.ty * TILE - cam.y);
+    ctx.strokeStyle = 'rgba(255,236,150,' + (0.45 + 0.35 * pulse).toFixed(3) + ')';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x + 1, y + 1, TILE - 2, TILE - 2);
+    ctx.strokeStyle = 'rgba(120,30,20,' + (0.5 * pulse).toFixed(3) + ')';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x + 3, y + 3, TILE - 6, TILE - 6);
+  } else if (t.type === 'animal' && t.a) {
+    const x = t.a.x * TILE - cam.x, y = t.a.y * TILE - cam.y;
+    ctx.strokeStyle = 'rgba(255,236,150,' + (0.5 + 0.4 * pulse).toFixed(3) + ')';
+    ctx.lineWidth = 2;
+    circle(Math.round(x), Math.round(y), 13 + pulse * 2);
+  } else if (t.type === 'shop') {
+    ctx.strokeStyle = 'rgba(255,236,150,' + (0.45 + 0.3 * pulse).toFixed(3) + ')';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(VW / 2 - 20, LH.worldTop + LH.worldH / 2 - 14, 40, 28);
+  }
+  ctx.restore();
 }
 
 /* ======================= HUD ======================= */
@@ -319,6 +348,11 @@ function drawControls() {
     ctx.strokeStyle = on ? '#ffd24a' : 'rgba(0,0,0,.4)'; ctx.lineWidth = 2;
     ctx.strokeRect(b.x + 1, b.y + 1, b.w - 2, b.w - 2);
     drawToolIcon(id, b.x + b.w / 2, b.y + b.w / 2 - 1);
+    // 右下角序号角标（对应键盘 1~5）
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = on ? 'rgba(255,240,180,.95)' : 'rgba(230,238,215,.55)';
+    ctx.font = 'bold 9px sans-serif';
+    ctx.fillText(String(i + 1), b.x + b.w - 8, b.y + b.w - 8);
   }
   ctx.fillStyle = 'rgba(0,0,0,.18)'; ctx.fillRect(0, LH.worldBottom, VW, 2);
 }

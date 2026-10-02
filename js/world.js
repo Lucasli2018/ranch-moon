@@ -75,11 +75,25 @@ function seedChoice() {
    这样锄头/水壶作用的位置和角色朝向、高亮框始终一致，不会挖到脚下或隔格 */
 function frontTile() {
   const d = player.dir;
-  const fx = player.x + (d === 1 ? 11 : d === 3 ? -11 : 0);
-  const fy = player.y + (d === 0 ? -14 : d === 2 ? 8 : 0);
-  return { tx: Math.floor(fx / TILE), ty: Math.floor(fy / TILE) };
+  const tx = Math.floor(player.x / TILE), ty = Math.floor(player.y / TILE);
+  return {
+    tx: d === 1 ? tx + 1 : d === 3 ? tx - 1 : tx,
+    ty: d === 0 ? ty - 1 : d === 2 ? ty + 1 : ty
+  };
 }
-let lastTarget = null;
+/* 优先作用面前那格；面前格不满足条件才退回最近的候选格 */
+function pickTile(range, test) {
+  const f = frontTile();
+  if (inMap(f.tx, f.ty) && test(f.tx, f.ty)) return { tx: f.tx, ty: f.ty };
+  const s = scanTiles(range, test);
+  return s ? { tx: s.tx, ty: s.ty } : null;
+}
+let lastTarget = null;   // 供渲染高亮「这一下会作用到这格」
+/* 每帧刷新目标：让高亮框和实际作用格永远一致 */
+function updateTarget() {
+  if (modal || !S) { lastTarget = null; return; }
+  lastTarget = findTarget();
+}
 /* 半径（格）内符合条件的格子，取最近一个 */
 function scanTiles(range, test) {
   const pcx = player.x / TILE, pcy = player.y / TILE;
@@ -96,12 +110,14 @@ function scanTiles(range, test) {
 }
 function findTarget() {
   const kind = tool;
-  if (kind === 'axe')  return scanTiles(1.4, (tx, ty) => tileAt(tx, ty) === T.TREE);
-  if (kind === 'pick') return scanTiles(1.4, (tx, ty) => tileAt(tx, ty) === T.ROCK);
-  if (kind === 'hoe')  return scanTiles(1.4, (tx, ty) => tileAt(tx, ty) === T.DIRT);
-  if (kind === 'can')  return scanTiles(1.4, (tx, ty) => {
+  if (kind === 'axe' || kind === 'pick' || kind === 'hoe') {
+    const key = kind === 'axe' ? T.TREE : kind === 'pick' ? T.ROCK : T.DIRT;
+    const t = pickTile(1.5, (tx, ty) => tileAt(tx, ty) === key);
+    return t ? { tx: t.tx, ty: t.ty, type: 'tile' } : null;
+  }
+  if (kind === 'can')  return pickTile(1.5, (tx, ty) => {
     const c = cropMap[ty][tx];
-    return map[ty][tx] === T.FARM && c && c.stage >= 0 && !c.wetted;
+    return map[ty][tx] === T.FARM && c && !c.wetted;
   });
   // 双手：优先成熟作物 → 动物 → 商店 → 空地播种
   const mature = scanTiles(1.35, (tx, ty) => {
