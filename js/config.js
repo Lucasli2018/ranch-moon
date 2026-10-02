@@ -25,9 +25,22 @@ let SCALE = 3;
 /* ======================= 瓦片定义 ======================= */
 const T = {
   GRASS: 0, DIRT: 1, FARM: 2, WATER: 3, TREE: 4, ROCK: 5,
-  WALL: 6, FLOOR: 7, ROAD: 8, FENCE: 9, PATH: 10, SHOP: 11, DOOR: 12
+  WALL: 6, FLOOR: 7, ROAD: 8, FENCE: 9, PATH: 10, SHOP: 11, DOOR: 12,
+  HOUSE: 13, BSHOP: 14, BARN: 15, SIGN: 16   // 建筑锚点 / 路牌（非固体）
 };
 const SOLID = new Set([T.WALL, T.WATER, T.TREE, T.ROCK, T.SHOP, T.FENCE]);
+
+/* ======================= 场景 ======================= */
+/* 多场景地图：每个场景独立 map/cropMap/animals，边缘出口互相切换 */
+const SCENE_LIST = ['farm', 'pasture', 'forest'];
+const SCENE_NAME = { farm: '月光农场', pasture: '向阳牧场', forest: '月影森林' };
+/* 出口：走到场景边缘这些格子触发切换 [scene, x范围或y范围, 目标spawn] */
+const EXITS = {
+  farm:    [{ edge: 'E', y0: 14, y1: 17, to: 'pasture', sx: 2.5, sy: 15.5 }],
+  pasture: [{ edge: 'W', y0: 14, y1: 17, to: 'farm', sx: 29.5, sy: 15.5 },
+            { edge: 'E', y0: 14, y1: 17, to: 'forest', sx: 2.5, sy: 15.5 }],
+  forest:  [{ edge: 'W', y0: 14, y1: 17, to: 'pasture', sx: 29.5, sy: 15.5 }]
+};
 
 /* ======================= 作物数据 ======================= */
 /* stage: 0 种子土堆 → 1,2,3 生长 → 4 成熟 */
@@ -53,6 +66,14 @@ const ITEMS = {
   egg: { name: '鸡蛋', price: 40 },
   milk: { name: '牛奶', price: 80 },
   wool: { name: '羊毛', price: 60 }
+};
+
+/* ======================= 牧场动物（可花钱购入，每天产出） ======================= */
+/* max = 该种类最多能养几只；买下后每天产出 product，走近按「使用」收取 */
+const ANIMAL_SHOP = {
+  chicken: { name: '鸡',   price: 500,  product: 'egg',  max: 2, desc: '每天 1 个鸡蛋' },
+  cow:     { name: '奶牛', price: 1800, product: 'milk', max: 2, desc: '每天 1 瓶牛奶' },
+  sheep:   { name: '绵羊', price: 1200, product: 'wool', max: 1, desc: '每天 1 撮羊毛' }
 };
 
 /* ======================= 季节 ======================= */
