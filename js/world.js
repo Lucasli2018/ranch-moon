@@ -62,6 +62,28 @@ function itemColor(id) {
   if (ITEMS[id]) return '#cfd8c8';
   return '#cfd8c8';
 }
+/* ======================= 牧场动物买卖 ======================= */
+function animalDef(kind) { return ANIMAL_SHOP[kind] || null; }
+function animalPrice(a) { const d = animalDef(a.kind); return d ? d.price : 0; }
+function animalMax(kind) { const d = animalDef(kind); return d ? d.max : 1; }
+function animalOwned(kind) { let n = 0; animals.forEach(a => { if (a.kind === kind && a.owned) n++; }); return n; }
+/* 买下牧场里的动物：owned=已购买；have=今日有产出（nextDay 只对 owned 置位） */
+function buyAnimal(a) {
+  if (!a) return false;
+  if (a.owned) { toastMsg('这只已经在牧场里了'); return false; }
+  const d = animalDef(a.kind);
+  if (!d) { toastMsg('这里买不了'); return false; }
+  if (animalOwned(a.kind) >= animalMax(a.kind)) {
+    toastMsg('牧场里「' + d.name + '」最多养 ' + d.max + ' 只'); beep(200, .12); return false;
+  }
+  if (S.gold < d.price) { toastMsg('金币不够，还差 ¥' + (d.price - S.gold)); beep(180, .14); return false; }
+  S.gold -= d.price; a.owned = true; a.have = false;
+  toastMsg('买下' + a.name + '！明天起每天产' + itemName(d.product));
+  beep(760, .1); beep(980, .08);
+  saveGame();
+  return true;
+}
+
 /* 选中的种子（在背包面板里可切换） */
 function seedChoice() {
   if (S.seedChoice && seedCount(S.seedChoice) > 0) return S.seedChoice;
@@ -126,7 +148,7 @@ function findTarget() {
   if (mature) return { tx: mature.tx, ty: mature.ty, type: 'crop' };
   const an = animals.reduce((best, a) => {
     const d = Math.hypot(a.x * TILE - player.x, a.y * TILE - player.y);
-    return (a.have && (best === null || d < best.d)) ? { d: d, a: a } : best;
+    return (a.owned && (best === null || d < best.d)) ? { d: d, a: a } : best;
   }, null);
   if (an && an.d < 26) return { type: 'animal', a: an.a };
   const sh = scanTiles(1.7, (tx, ty) => tileAt(tx, ty) === T.SHOP);
@@ -149,7 +171,8 @@ function doUse() {
   if (!t) { toastMsg('这里没什么可做的'); return; }
   if (t.type === 'shop') { openShop(); return; }
   if (t.type === 'animal') {
-    if (!t.a.have) return;
+    if (!t.a.owned) return;
+    if (!t.a.have) { toastMsg(t.a.name + '现在没有产出，明天再来看看'); return; }
     if (S.stamina < useCost('gather')) { toastMsg('体力不够'); return; }
     S.stamina -= useCost('gather');
     t.a.have = false;
@@ -242,7 +265,7 @@ function nextDay() {
     if (c.wetted) { c.stage = Math.min(4, c.stage + 1); c.wetted = false; }
   }
   lastWither = grown;
-  animals.forEach(function (a) { a.have = true; });
+  animals.forEach(function (a) { if (a.owned) a.have = true; });
   S.day++;
   if (S.day > SEASON_DAYS) { S.day = 1; S.season++; if (S.season > 3) { S.season = 0; S.year++; } }
   S.staminaMax = Math.min(140, 100 + Math.floor((S.year - 1) * 32 + (S.season * 8 + S.day)) * 0.6);

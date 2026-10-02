@@ -28,7 +28,7 @@ function computeLayout() {
   };
 }
 
-function openShop() { modal = { type: 'shop', tab: 'seed' }; beep(520, .08); }
+function openShop() { modal = { type: 'shop', tab: 'seed', page: 0 }; beep(520, .08); }
 function openBag() { modal = { type: 'bag' }; beep(480, .08); }
 function openMenu() { modal = { type: 'menu' }; beep(480, .08); }
 function hudBtn(id) {

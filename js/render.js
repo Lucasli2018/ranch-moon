@@ -10,7 +10,8 @@ let bakeSeason = -1;
 function circle(x, y, r) { ctx.beginPath(); ctx.arc(x, y, r, 0, 6.2832); ctx.fill(); }
 function panel(w, h) { return { w: w, h: h, x: (VW - w) / 2, y: (VH - h) / 2 }; }
 
-/* ======================= 单格绘制 ======================= */
+/* ======================= 单格绘制（地面层：不含立体物） ======================= */
+const FLAT_TILES = new Set([T.GRASS, T.DIRT, T.FARM, T.WATER, T.ROAD, T.PATH, T.FLOOR]);
 function drawTile(tx, ty, sx, sy) {
   const t = map[ty][tx];
   const pal = SEASON_TINT[curSeason()];
@@ -35,34 +36,64 @@ function drawTile(tx, ty, sx, sy) {
     const w = Math.sin((frameNo * 0.06) + tx * 0.7 + ty * 0.5);
     ctx.fillStyle = w > 0 ? '#3f86d0' : '#3779c0'; ctx.fillRect(sx, sy, TILE, TILE);
     ctx.fillStyle = '#9fd4f5'; ctx.fillRect(sx + ((h & 7)), sy + 4 + ((h >> 2) & 3), 3, 1);
-  } else if (t === T.TREE) {
-    ctx.fillStyle = pal.grass; ctx.fillRect(sx, sy, TILE, TILE);
-    ctx.fillStyle = '#6b4a2a'; ctx.fillRect(sx + 7 - (h & 1), sy + 9, 3, 7);
-    ctx.fillStyle = pal.leaf;
-    ctx.fillRect(sx + 2, sy + 2, 12, 8);
-    ctx.fillRect(sx, sy + 4, 16, 6);
-    ctx.fillStyle = (h & 1) ? '#ffffff22' : '#00000018'; ctx.fillRect(sx + 3, sy + 3, 4, 4);
-  } else if (t === T.ROCK) {
-    ctx.fillStyle = pal.grass; ctx.fillRect(sx, sy, TILE, TILE);
-    ctx.fillStyle = '#9aa2a8'; ctx.fillRect(sx + 2, sy + 5, 12, 9);
-    ctx.fillStyle = '#b8c0c6'; ctx.fillRect(sx + 4, sy + 3, 7, 6);
-    ctx.fillStyle = '#7a8288'; ctx.fillRect(sx + 2, sy + 12, 12, 2);
-  } else if (t === T.WALL) {
-    ctx.fillStyle = '#d9c79c'; ctx.fillRect(sx, sy, TILE, TILE);
-    ctx.fillStyle = '#00000010'; ctx.fillRect(sx, sy + TILE - 2, TILE, 2);
-  } else if (t === T.DOOR) {
-    ctx.fillStyle = '#6b4423'; ctx.fillRect(sx, sy, TILE, TILE);
-    ctx.fillStyle = '#8a5a30'; ctx.fillRect(sx + 2, sy + 2, 12, 12);
   } else if (t === T.ROAD || t === T.PATH) {
     ctx.fillStyle = (h & 3) ? '#c9b78c' : '#c3b184'; ctx.fillRect(sx, sy, TILE, TILE);
     if ((h & 15) === 3) { ctx.fillStyle = '#b3a174'; ctx.fillRect(sx + 4, sy + 7, 3, 2); }
+  } else if (t === T.FLOOR) {
+    ctx.fillStyle = '#c9b184'; ctx.fillRect(sx, sy, TILE, TILE);
   } else if (t === T.FENCE) {
     ctx.fillStyle = pal.grass; ctx.fillRect(sx, sy, TILE, TILE);
     ctx.fillStyle = '#b98b52'; ctx.fillRect(sx + 7, sy + 2, 2, 14);
     ctx.fillStyle = '#a87a44'; ctx.fillRect(sx, sy + 4, 16, 2); ctx.fillRect(sx, sy + 9, 16, 2);
+  }
+}
+
+/* ======================= 立体物绘制（按 y 行序，前景遮背景） ======================= */
+/* 建筑图片锚点尺寸：HOUSE 176x102 @11x6 tiles，SHOP/BARN 96x88 @6x5.5 tiles */
+const BUILDINGS = {
+  13: { img: 'house', w: 128, h: 96 },
+  14: { img: 'shop',  w: 96,  h: 88 },
+  15: { img: 'barn',  w: 96,  h: 88 }
+};
+function drawObj(tx, ty, sx, sy) {
+  const t = map[ty][tx];
+  const pal = SEASON_TINT[curSeason()];
+  const h = hash2(tx, ty);
+  if (t === T.WALL) {
+    ctx.fillStyle = '#d9c79c'; ctx.fillRect(sx, sy, TILE, TILE);
+    ctx.fillStyle = '#00000010'; ctx.fillRect(sx, sy + TILE - 2, TILE, 2);
+  } else if (t === T.DOOR) {
+    ctx.fillStyle = 'rgba(107,68,35,.55)'; ctx.fillRect(sx + 2, sy + 6, TILE - 4, TILE - 6);
+    ctx.fillStyle = '#8a5a30'; ctx.fillRect(sx + 3, sy + 7, TILE - 6, TILE - 8);
   } else if (t === T.SHOP) {
     ctx.fillStyle = '#7a5230'; ctx.fillRect(sx, sy, TILE, TILE);
-    ctx.fillStyle = '#a5713f'; ctx.fillRect(sx + 1, sy + 1, 14, 5);
+    ctx.fillStyle = '#a5713f'; ctx.fillRect(sx + 1, sy + 1, TILE - 2, 5);
+  } else if (t === T.TREE) {
+    if (!drawAsset('tree', sx, sy - 2, 16, 18)) {
+      ctx.fillStyle = pal.grass; ctx.fillRect(sx, sy, TILE, TILE);
+      ctx.fillStyle = '#6b4a2a'; ctx.fillRect(sx + 7 - (h & 1), sy + 9, 3, 7);
+      ctx.fillStyle = pal.leaf;
+      ctx.fillRect(sx + 2, sy + 2, 12, 8); ctx.fillRect(sx, sy + 4, 16, 6);
+    }
+  } else if (t === T.ROCK) {
+    if (!drawAsset('rock', sx + 1, sy + 3, 14, 12)) {
+      ctx.fillStyle = pal.grass; ctx.fillRect(sx, sy, TILE, TILE);
+      ctx.fillStyle = '#9aa2a8'; ctx.fillRect(sx + 2, sy + 5, 12, 9);
+      ctx.fillStyle = '#b8c0c6'; ctx.fillRect(sx + 4, sy + 3, 7, 6);
+    }
+  } else if (t === T.SIGN) {
+    ctx.fillStyle = '#8a6a3a'; ctx.fillRect(sx + 7, sy + 6, 2, 9);
+    ctx.fillStyle = '#c9a86a'; ctx.fillRect(sx + 2, sy + 1, 12, 7);
+    ctx.strokeStyle = '#7a5230'; ctx.lineWidth = 1; ctx.strokeRect(sx + 2.5, sy + 1.5, 11, 6);
+    ctx.fillStyle = '#7a5230';
+    ctx.fillRect(sx + 4, sy + 3, 8, 1); ctx.fillRect(sx + 4, sy + 5, 6, 1);
+  } else if (BUILDINGS[t]) {
+    const b = BUILDINGS[t];
+    if (!drawAsset(b.img, tx * TILE, ty * TILE, b.w, b.h)) {
+      // 兜底：整片建筑区画程序化墙
+      ctx.fillStyle = '#e6d6ae'; ctx.fillRect(sx, sy, TILE, TILE);
+      ctx.fillStyle = '#b8452f'; ctx.fillRect(sx, sy, TILE, 6);
+    }
   }
 }
 
@@ -110,28 +141,18 @@ function drawCrop(tx, ty, sx, sy) {
 }
 
 /* ======================= 动物绘制 ======================= */
+const ANIMAL_IMG = { chicken: 'an_chicken', cow: 'an_cow', sheep: 'an_sheep' };
+const ANIMAL_SIZE = { chicken: [20, 20], cow: [28, 22], sheep: [26, 22] };
 function drawAnimal(a) {
   const x = a.x * TILE, y = a.y * TILE;
   ctx.fillStyle = 'rgba(0,0,0,.18)'; ctx.fillRect(x - 6, y + 4, 12, 3);
-  if (a.kind === 'chicken') {
-    ctx.fillStyle = a.col; ctx.fillRect(x - 5, y - 6, 10, 9);
-    ctx.fillStyle = '#e8e0d0'; ctx.fillRect(x - 5, y + 1, 10, 2);
-    ctx.fillStyle = '#d03a2a'; ctx.fillRect(x - 4, y - 9, 4, 3);
-    ctx.fillStyle = '#e8a020'; ctx.fillRect(x + 4, y - 6, 2, 2);
-    ctx.fillStyle = '#2b2b2b'; ctx.fillRect(x + 2, y - 5, 2, 2);
-  } else if (a.kind === 'cow') {
-    ctx.fillStyle = a.col; ctx.fillRect(x - 8, y - 8, 16, 11);
-    ctx.fillStyle = '#4a4038';
-    ctx.fillRect(x - 6, y - 6, 4, 3); ctx.fillRect(x + 1, y - 4, 3, 3);
-    ctx.fillStyle = '#f0e6d8'; ctx.fillRect(x + 4, y - 7, 4, 3);
-    ctx.fillStyle = '#3a3028'; ctx.fillRect(x - 7, y - 9, 3, 2); ctx.fillRect(x + 4, y - 9, 3, 2);
-    ctx.fillStyle = '#c06050'; ctx.fillRect(x + 7, y - 4, 2, 2);
-  } else {
-    ctx.fillStyle = a.col; ctx.fillRect(x - 8, y - 8, 16, 12);
-    ctx.fillStyle = '#e0d8c8'; ctx.fillRect(x - 8, y - 7, 16, 4);
-    ctx.fillStyle = '#3a3028'; ctx.fillRect(x - 6, y - 9, 3, 2); ctx.fillRect(x + 3, y - 9, 3, 2);
-    ctx.fillStyle = '#c06050'; ctx.fillRect(x + 6, y - 3, 2, 2);
+  const sz = ANIMAL_SIZE[a.kind] || [20, 18];
+  // 未购买的动物显示为半透明"影子"，提示这里可以买
+  ctx.globalAlpha = a.owned ? 1 : 0.28;
+  if (!drawAsset(ANIMAL_IMG[a.kind], x - sz[0] / 2, y - sz[1] + 6, sz[0], sz[1])) {
+    ctx.fillStyle = a.col; ctx.fillRect(x - 7, y - 7, 14, 11);
   }
+  ctx.globalAlpha = 1;
   if (a.have) {
     const bob = Math.sin(frameNo * 0.08 + a.x) * 2;
     ctx.fillStyle = '#fdfdf8'; ctx.fillRect(x - 2, y - 16 + bob, 5, 5);
@@ -150,11 +171,14 @@ function drawToolInHand(x, top, d) {
   else if (tool === 'pick') { ctx.fillStyle = '#b0b8bd'; ctx.fillRect(px - 4, py - 5, 8, 2); ctx.fillRect(px - 1, py - 3, 2, 8); }
   else { ctx.fillStyle = '#f3c9a0'; ctx.fillRect(px - 2, py - 2, 5, 5); }
 }
+const PLAYER_IMG = { 0: 'player_up', 1: 'player_right', 2: 'player_down', 3: 'player_left' };
 function drawPlayer() {
   const x = Math.round(player.x), y = Math.round(player.y);
   const d = player.dir;
   const bob = player.moving && (Math.floor(frameNo / 6) % 2) ? 1 : 0;
   ctx.fillStyle = 'rgba(0,0,0,.2)'; ctx.fillRect(x - 6, y - 2, 12, 3);
+  // 图片素材 16x18（源 48px，向下取整保持锐利），底部对齐脚部
+  if (drawAsset(PLAYER_IMG[d], x - 8, y - 16 + bob, 16, 18)) return;
   const top = y - 14 + bob;
   ctx.fillStyle = '#3c5f8a';
   if (d !== 0) { ctx.fillRect(x - 4, top + 10, 3, 4 - bob); ctx.fillRect(x + 1, top + 10, 3, 4 - bob); }
@@ -173,7 +197,7 @@ function drawPlayer() {
   drawToolInHand(x, top, d);
 }
 
-/* ======================= 静态地图烘焙 ======================= */
+/* ======================= 静态地图烘焙（地面层 + 按行立体物层） ======================= */
 function bakeMap() {
   bake.width = MAP_W * TILE; bake.height = MAP_H * TILE;
   if (!S) return;
@@ -181,36 +205,24 @@ function bakeMap() {
   ctx.imageSmoothingEnabled = false;
   const pal = SEASON_TINT[curSeason()];
   ctx.fillStyle = pal.grass; ctx.fillRect(0, 0, bake.width, bake.height);
+  // 1) 地面层
   for (let ty = 0; ty < MAP_H; ty++) for (let tx = 0; tx < MAP_W; tx++)
     drawTile(tx, ty, tx * TILE, ty * TILE);
+  // 2) 立体物层（按 y 从小到大 → 前排自然遮住后排；建筑最后画，防止被墙行覆盖）
+  for (let ty = 0; ty < MAP_H; ty++) for (let tx = 0; tx < MAP_W; tx++) {
+    const t = map[ty][tx];
+    if (t === T.GRASS || t === T.DIRT || t === T.FARM || t === T.WATER || t === T.ROAD || t === T.PATH || t === T.FLOOR) continue;
+    if (BUILDINGS[t]) continue;
+    drawObj(tx, ty, tx * TILE, ty * TILE);
+  }
+  for (let ty = 0; ty < MAP_H; ty++) for (let tx = 0; tx < MAP_W; tx++)
+    if (BUILDINGS[map[ty][tx]]) drawObj(tx, ty, tx * TILE, ty * TILE);
   // 网格（设置里可关）
   if (Settings.d.showGrid) {
     ctx.fillStyle = 'rgba(0,0,0,.10)';
     for (let tx = 0; tx <= MAP_W; tx++) ctx.fillRect(tx * TILE, 0, 1, bake.height);
     for (let ty = 0; ty <= MAP_H; ty++) ctx.fillRect(0, ty * TILE, bake.width, 1);
   }
-  // 屋子
-  ctx.fillStyle = '#b8452f'; ctx.fillRect(10 * TILE, 3 * TILE, 11 * TILE, 2 * TILE);
-  ctx.fillStyle = '#00000025'; ctx.fillRect(10 * TILE, 4 * TILE, 11 * TILE, 1 * TILE);
-  ctx.fillStyle = '#e6d6ae'; ctx.fillRect(10 * TILE, 5 * TILE, 11 * TILE, 5 * TILE);
-  ctx.fillStyle = '#00000012'; ctx.fillRect(10 * TILE, 5 * TILE, 11 * TILE, 1);
-  ctx.fillStyle = '#8a6a3a'; ctx.fillRect(12 * TILE, 6 * TILE, 3 * TILE, 2 * TILE);
-  ctx.fillStyle = '#8a6a3a'; ctx.fillRect(17 * TILE, 6 * TILE, 3 * TILE, 2 * TILE);
-  ctx.fillStyle = '#8a6a3a'; ctx.fillRect(13 * TILE, 6 * TILE, 2 * TILE, 2 * TILE);
-  ctx.fillStyle = '#6b4423'; ctx.fillRect(14 * TILE, 7 * TILE, 3 * TILE, 3 * TILE);
-  ctx.fillStyle = '#a8783f'; ctx.fillRect(14 * TILE + 2, 7 * TILE + 2, 2, 2);
-  ctx.fillStyle = '#a8783f'; ctx.fillRect(15 * TILE + 8, 7 * TILE + 2, 2, 2);
-  // 商店
-  ctx.fillStyle = '#c05a3a'; ctx.fillRect(21 * TILE, 18 * TILE, 5 * TILE, 1 * TILE);
-  ctx.fillStyle = '#efe3c4'; ctx.fillRect(21 * TILE, 19 * TILE, 5 * TILE, 5 * TILE);
-  ctx.fillStyle = '#00000012'; ctx.fillRect(21 * TILE, 19 * TILE, 5 * TILE, 1);
-  ctx.fillStyle = '#9ab8d0'; ctx.fillRect(22 * TILE, 20 * TILE, 1 * TILE, 2 * TILE);
-  ctx.fillStyle = '#9ab8d0'; ctx.fillRect(24 * TILE, 20 * TILE, 1 * TILE, 2 * TILE);
-  ctx.fillStyle = '#7a5230'; ctx.fillRect(21 * TILE, 24 * TILE, 5 * TILE, 1 * TILE);
-  ctx.fillStyle = '#c04a3a'; ctx.fillRect(22 * TILE, 19 * TILE - 4, 3 * TILE, 4);
-  ctx.fillStyle = '#f0d090'; ctx.fillRect(22 * TILE + 3, 19 * TILE - 2, 2 * TILE - 6, 2);
-  ctx.fillStyle = '#b8452f'; ctx.fillRect(21 * TILE, 23 * TILE, 5 * TILE, 1 * TILE);
-  ctx.fillStyle = 'rgba(0,0,0,.05)'; ctx.fillRect(0, 0, bake.width, bake.height);
   ctx = save;
   bakeSeason = S ? S.season : 0;
 }
@@ -385,6 +397,26 @@ function lineBtn(r, label, fn, col) {
   ctx.fillText(label, r.x + r.w / 2, r.y + r.h / 2);
   hit(r, fn);
 }
+/* 物品图标：ic_*.png 素材，缺图退回色块 */
+function drawItemIcon(id, x, y, s) {
+  if (drawAsset('ic_' + id, x, y, s, s)) return;
+  ctx.fillStyle = itemColor(id); ctx.fillRect(x, y, s, s);
+}
+/* 商店列表行：图标 + 名称 + 副标题 + 右侧价格 + 操作按钮 */
+function shopRow(p, y, h, id, col, name, sub, price, label, cb, btnCol, alt) {
+  ctx.fillStyle = alt ? 'rgba(0,0,0,.16)' : 'rgba(0,0,0,.08)';
+  ctx.fillRect(p.x + 12, y, p.w - 24, h);
+  drawItemIcon(id, p.x + 18, y + (h - 13) / 2, 13, 13);
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#fff'; ctx.font = '12px sans-serif';
+  ctx.fillText(name, p.x + 36, y + 12);
+  ctx.fillStyle = '#cfe8c0'; ctx.font = '10px sans-serif';
+  ctx.fillText(sub, p.x + 36, y + 24);
+  ctx.textAlign = 'right'; ctx.fillStyle = '#ffd24a'; ctx.font = 'bold 12px sans-serif';
+  ctx.fillText(price, p.x + p.w - 52, y + 13);
+  lineBtn({ x: p.x + p.w - 50, y: y + 1, w: 38, h: h - 2 }, label, cb, btnCol);
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+}
 function toggleRow(p, y, w, name, key) {
   ctx.textAlign = 'left'; ctx.fillStyle = '#e6eedd'; ctx.font = '12px sans-serif';
   ctx.fillText(name, p.x + 18, y + 12);
@@ -419,58 +451,101 @@ function drawModal() {
     lineBtn({ x: p.x + 60, y: p.y + 108, w: 200, h: 40 }, '起床！', closeDayEnd, '#5f8f56');
 
   } else if (type === 'shop') {
-    const p = panel(Math.min(VW - 40, 420), Math.min(VH - 110, 400));
-    drawPanel(p, '农产品商店', '月光牧场 · 杂货铺');
-    const tx = p.x + 14, tw = (p.w - 28) / 2, ty = p.y + 36;
-    lineBtn({ x: tx, y: ty, w: tw, h: 26 }, '买种子', () => { modal.tab = 'seed'; }, modal.tab === 'seed' ? '#4f7f47' : '#3a5c37');
-    lineBtn({ x: tx + tw + 6, y: ty, w: tw, h: 26 }, '卖东西', () => { modal.tab = 'sell'; }, modal.tab === 'sell' ? '#4f7f47' : '#3a5c37');
+    const p = panel(Math.min(VW - 40, 420), Math.min(VH - 56, 350));
+    drawPanel(p, '农产品商店', '月光牧场 · 杂货铺 · ' + fmtGold(S.gold));
+    const tx = p.x + 12, tw = (p.w - 24 - 12) / 3, ty = p.y + 32;
+    const tabs = [['seed', '买种子'], ['sell', '卖东西'], ['ranch', '牧场']];
+    for (let i = 0; i < tabs.length; i++) {
+      lineBtn({ x: tx + i * (tw + 6), y: ty, w: tw, h: 26 }, tabs[i][1],
+        () => { modal.tab = tabs[i][0]; modal.page = 0; },
+        modal.tab === tabs[i][0] ? '#4f7f47' : '#3a5c37');
+    }
+    const listY = ty + 34, rowH = 30;
     if (modal.tab === 'seed') {
       const list = seasonCrops();
       for (let i = 0; i < list.length; i++) {
-        const c = list[i], y = ty + 34 + i * 36;
-        ctx.fillStyle = i % 2 ? 'rgba(0,0,0,.16)' : 'rgba(0,0,0,.08)'; ctx.fillRect(p.x + 14, y, p.w - 28, 32);
-        ctx.fillStyle = c.col[3]; ctx.fillRect(p.x + 20, y + 10, 12, 12);
+        const c = list[i], y = listY + i * rowH;
+        shopRow(p, y, rowH, c.id, c.col[3],
+          c.name + '（' + c.days + '天成熟）',
+          '持有种子 ' + seedCount(c.id) + ' · 售价 ¥' + c.sell,
+          '¥' + c.seed, '买', () => {
+            if (S.gold < c.seed) { toastMsg('金币不够'); beep(180, .12); return; }
+            S.gold -= c.seed; seedAdd(c.id, 1); beep(880, .09); saveGame();
+          });
+      }
+    } else if (modal.tab === 'ranch') {
+      const keys = ['chicken', 'cow', 'sheep'];
+      for (let i = 0; i < keys.length; i++) {
+        const d = ANIMAL_SHOP[keys[i]], y = listY + i * rowH;
+        const owned = animalOwned(keys[i]);
+        const target = animals.find(a => a.kind === keys[i] && !a.have);
+        // 行底色：已养满 / 买不起的用灰调
+        ctx.fillStyle = i % 2 ? 'rgba(0,0,0,.16)' : 'rgba(0,0,0,.08)';
+        ctx.fillRect(p.x + 12, y, p.w - 24, rowH);
+        if (!drawAsset(ANIMAL_IMG[keys[i]], p.x + 15, y + 6, 21, 18)) {
+          ctx.fillStyle = '#e8e0c0'; ctx.fillRect(p.x + 18, y + 9, 12, 12);
+        }
         ctx.textAlign = 'left'; ctx.fillStyle = '#fff'; ctx.font = '12px sans-serif';
-        ctx.fillText(c.name + '（' + c.days + '天成熟）', p.x + 38, y + 12);
+        ctx.fillText(d.name, p.x + 36, y + 11);
         ctx.fillStyle = '#cfe8c0'; ctx.font = '10px sans-serif';
-        ctx.fillText('持有种子 ' + seedCount(c.id), p.x + 38, y + 25);
+        ctx.fillText(d.desc + '（上限 ' + d.max + ' 只）', p.x + 36, y + 23);
         ctx.textAlign = 'right'; ctx.fillStyle = '#ffd24a'; ctx.font = 'bold 12px sans-serif';
-        ctx.fillText('¥' + c.seed, p.x + p.w - 40, y + 16);
-        lineBtn({ x: p.x + p.w - 36, y: y + 2, w: 32, h: 28 }, '买', () => {
-          if (S.gold < c.seed) { toastMsg('金币不够'); return; }
-          S.gold -= c.seed; seedAdd(c.id, 1); beep(880, .09); saveGame();
-        });
+        ctx.fillText('¥' + d.price, p.x + p.w - 56, y + 11);
+        const full = owned >= d.max || !target;
+        lineBtn({ x: p.x + p.w - 50, y: y + 1, w: 38, h: 28 },
+          full ? '—' : '买',
+          () => { if (!full) buyAnimal(target); },
+          full ? '#5a5a4a' : '#4f7f47');
+        ctx.textAlign = 'left'; ctx.fillStyle = full ? '#9fb08c' : '#dfe8d0'; ctx.font = '10px sans-serif';
+        ctx.fillText('已养 ' + owned + '/' + d.max, p.x + 96, y + 11);
       }
     } else {
       const items = S.bag.slice();
+      const per = 5, pages = Math.max(1, Math.ceil(items.length / per));
+      const page = Math.min(modal.page || 0, pages - 1);
+      modal.page = page;
       if (!items.length) {
-        ctx.textAlign = 'center'; ctx.fillStyle = '#cfd8c8'; ctx.font = '12px sans-serif';
-        ctx.fillText('背包里没有可卖的东西', VW / 2, ty + 60);
-      }
-      for (let i = 0; i < Math.min(items.length, 7); i++) {
-        const it = items[i], y = ty + 34 + i * 36;
-        ctx.fillStyle = i % 2 ? 'rgba(0,0,0,.16)' : 'rgba(0,0,0,.08)'; ctx.fillRect(p.x + 14, y, p.w - 28, 32);
-        ctx.fillStyle = itemColor(it.id); ctx.fillRect(p.x + 20, y + 10, 12, 12);
-        ctx.textAlign = 'left'; ctx.fillStyle = '#fff'; ctx.font = '12px sans-serif';
-        ctx.fillText(itemName(it.id) + ' ×' + it.n, p.x + 38, y + 16);
-        ctx.textAlign = 'right'; ctx.fillStyle = '#8ce07a'; ctx.font = 'bold 12px sans-serif';
-        ctx.fillText('+¥' + (itemPrice(it.id) * it.n), p.x + p.w - 40, y + 16);
-        lineBtn({ x: p.x + p.w - 36, y: y + 2, w: 32, h: 28 }, '卖', () => {
-          const price = itemPrice(it.id) * it.n;
-          S.gold += price; S.stats.earned += price;
-          S.bag.splice(S.bag.indexOf(it), 1); beep(1040, .1); saveGame(); modal.tab = 'sell';
-        });
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#cfd8c8'; ctx.font = '12px sans-serif';
+        ctx.fillText('背包里没有可卖的东西', VW / 2, listY + 40);
+        ctx.textBaseline = 'middle';
+      } else {
+        for (let i = 0; i < per; i++) {
+          const it = items[page * per + i];
+          if (!it) break;
+          const y = listY + i * rowH;
+          shopRow(p, y, rowH, it.id, itemColor(it.id),
+            itemName(it.id) + ' ×' + it.n,
+            '单价 ¥' + itemPrice(it.id),
+            '+' + (itemPrice(it.id) * it.n), '卖', () => {
+              const price = itemPrice(it.id) * it.n;
+              S.gold += price; S.stats.earned += price;
+              const idx = S.bag.indexOf(it);
+              if (idx >= 0) S.bag.splice(idx, 1);
+              modal.page = 0; beep(1040, .1); saveGame();
+            }, '#5f8f56');
+        }
+        if (pages > 1) {
+          const cy = listY + per * rowH + 2;
+          ctx.textAlign = 'center'; ctx.fillStyle = '#cfe8c0'; ctx.font = '11px sans-serif';
+          ctx.fillText((page + 1) + ' / ' + pages + ' 页', p.x + p.w / 2, cy + 11);
+          lineBtn({ x: p.x + 12, y: cy, w: 54, h: 22 }, '‹ 上页', () => { modal.page = Math.max(0, page - 1); });
+          lineBtn({ x: p.x + p.w - 66, y: cy, w: 54, h: 22 }, '下页 ›', () => { modal.page = Math.min(pages - 1, page + 1); });
+        }
       }
     }
-    const by = p.y + p.h - 46;
-    lineBtn({ x: p.x + 14, y: by, w: (p.w - 28) / 2, h: 34 }, modal.tab === 'seed' ? '继续看看' : '全部卖出', () => {
-      if (modal.tab === 'seed') { modal.tab = 'sell'; return; }
-      let total = 0;
-      S.bag.forEach(it => { total += itemPrice(it.id) * it.n; });
-      S.gold += total; S.stats.earned += total; S.bag = [];
-      toastMsg('卖出 ¥' + total); beep(1180, .12); saveGame();
-    }, '#4f7f47');
-    lineBtn({ x: p.x + p.w / 2 + 8, y: by, w: (p.w - 28) / 2, h: 34 }, '关闭', () => { modal = null; });
+    const by = p.y + p.h - 42;
+    if (modal.tab === 'sell') {
+      const n = S.bag.reduce((a, it) => a + it.n, 0);
+      lineBtn({ x: p.x + 12, y: by, w: (p.w - 36) / 2, h: 32 }, '全部卖出（' + n + '）', () => {
+        let total = 0;
+        S.bag.forEach(it => { total += itemPrice(it.id) * it.n; });
+        S.gold += total; S.stats.earned += total; S.bag = [];
+        toastMsg('卖出 ¥' + total); beep(1180, .12); saveGame();
+      }, '#4f7f47');
+      lineBtn({ x: p.x + p.w / 2 + 12, y: by, w: (p.w - 36) / 2, h: 32 }, '关闭', () => { modal = null; });
+    } else {
+      lineBtn({ x: p.x + (p.w - 24) / 2, y: by, w: (p.w - 24) / 2, h: 32 }, '关闭', () => { modal = null; });
+    }
 
   } else if (type === 'bag') {
     const p = panel(Math.min(VW - 40, 420), Math.min(VH - 110, 400));
@@ -482,7 +557,7 @@ function drawModal() {
       const c = seedList[i], y = p.y + 52 + i * 30;
       ctx.fillStyle = seedCount(c.id) ? 'rgba(0,0,0,.18)' : 'rgba(0,0,0,.08)';
       ctx.fillRect(p.x + 14, y, p.w - 28, 26);
-      ctx.fillStyle = c.col[3]; ctx.fillRect(p.x + 20, y + 7, 12, 12);
+      drawItemIcon(c.id, p.x + 20, y + 7, 13);
       ctx.fillStyle = '#fff'; ctx.font = '12px sans-serif'; ctx.textAlign = 'left';
       ctx.fillText(c.name, p.x + 38, y + 13);
       ctx.fillStyle = '#cfe8c0'; ctx.font = '11px sans-serif'; ctx.fillText('种子 ' + seedCount(c.id) + ' 个', p.x + 110, y + 13);
@@ -525,7 +600,11 @@ function drawModal() {
       '  走到屋子门口按「使用」睡觉，体力/时间才会推进。',
       '■ 赚钱',
       '  走到商店柜台前按「使用」，买种子、卖作物/鸡蛋/牛奶/羊毛。',
-      '  斧头砍树得木材，镐子敲石得石头；牧场里的鸡牛羊每天会产出。',
+      '  斧头砍树得木材，镐子敲石得石头。',
+      '■ 牧场',
+      '  商店第三个页签「牧场」可以买鸡（¥500）、绵羊（¥1200）、奶牛（¥1800），',
+      '  每种有上限，买下后每天产出，走近它按「使用」收取，卖给商店。',
+      '  作物和动物都要靠「睡觉」推进——体力耗尽也记得回屋。',
       '■ 规则',
       '  每季 8 天、一年 4 季；体力用光只能睡觉。数据自动存档。'
     ];

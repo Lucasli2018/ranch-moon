@@ -143,6 +143,7 @@ function update(dt) {
 
   // 移动方向
   let dx = 0, dy = 0;
+  if (sceneCooldown > 0) sceneCooldown -= dt;
   if (!joy.active && (inputs.left || inputs.right || inputs.up || inputs.down)) {
     if (inputs.left) dx--; if (inputs.right) dx++;
     if (inputs.up) dy--; if (inputs.down) dy++;
@@ -172,6 +173,7 @@ function update(dt) {
     player.anim += dt;
     tapTarget = null;
   }
+  checkExits();
 
   // 相机
   const maxX = Math.max(0, MAP_W * TILE - VW);
@@ -186,6 +188,23 @@ function update(dt) {
   // 自动存档
   saveTimer += dt;
   if (Settings.d.autoSave !== false && saveTimer > 40) { saveTimer = 0; saveGame(); }
+}
+
+/* ---------------- 场景出口检测 ---------------- */
+let sceneCooldown = 0;   // 切换后短暂冷却，防止出生点在边缘来回横跳
+function checkExits() {
+  if (modal || sceneCooldown > 0) return;
+  const list = EXITS[sceneKey] || [];
+  const tx = player.x / TILE, ty = player.y / TILE;
+  for (const e of list) {
+    const hitE = e.edge === 'E' && tx >= MAP_W - 1.6;
+    const hitW = e.edge === 'W' && tx <= 1.6;
+    if ((hitE || hitW) && ty >= e.y0 && ty <= e.y1) {
+      sceneCooldown = 0.8;
+      switchScene(e.to, e.sx, e.sy);
+      return;
+    }
+  }
 }
 
 /* ---------------- 渲染主入口 ---------------- */
@@ -244,6 +263,9 @@ function init() {
 
   bakeMap();
   saveGame();
+
+  /* 图片素材：加载完成后重烘焙地图（加载前用程序化兜底） */
+  loadAssets(function () { bakeMap(); });
 
   /* 调试 / 自动化接口 */
   window.MR = {
