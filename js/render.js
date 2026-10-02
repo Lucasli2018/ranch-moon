@@ -160,6 +160,21 @@ function drawAnimal(a) {
   }
 }
 
+/* ======================= NPC 绘制 ======================= */
+function drawNpc(n) {
+  const x = n.x * TILE, y = n.y * TILE;
+  ctx.fillStyle = 'rgba(0,0,0,.18)'; ctx.fillRect(x - 6, y + 4, 12, 3);
+  const bob = Math.sin(frameNo * 0.05 + n.x) > 0.9 ? 1 : 0;   // 偶尔轻晃，像在呼吸
+  if (!drawAsset(n.img, x - 8, y - 17 - bob, 16, 18)) {
+    ctx.fillStyle = '#c88'; ctx.fillRect(x - 5, y - 12, 10, 12);
+    ctx.fillStyle = '#f3c9a0'; ctx.fillRect(x - 4, y - 16, 8, 5);
+  }
+  // 头顶感叹号提示可对话
+  const bob2 = Math.sin(frameNo * 0.09 + n.x) * 1.2;
+  ctx.fillStyle = '#ffd24a'; ctx.fillRect(x - 1, y - 24 + bob2, 3, 5);
+  ctx.fillStyle = '#fff'; ctx.fillRect(x - 1, y - 18 + bob2, 3, 2);
+}
+
 /* ======================= 玩家绘制 ======================= */
 function drawToolInHand(x, top, d) {
   const ox = d === 1 ? 7 : d === 3 ? -7 : 0;
@@ -249,8 +264,9 @@ function drawWorld() {
     if (map[ty][tx] === T.FARM) drawCrop(tx, ty, Math.round(tx * TILE - cam.x), Math.round(ty * TILE - cam.y));
   // 目标高亮：明确告诉玩家「这一下会作用到这格」
   drawTargetMark();
-  // 动物 + 玩家
+  // 动物 + NPC + 玩家
   animals.slice().sort((a, b) => a.y - b.y).forEach(drawAnimal);
+  npcs.slice().sort((a, b) => a.y - b.y).forEach(drawNpc);
   drawPlayer();
   // 粒子
   for (const p of dust) {
@@ -279,6 +295,11 @@ function drawTargetMark() {
     ctx.strokeStyle = 'rgba(255,236,150,' + (0.5 + 0.4 * pulse).toFixed(3) + ')';
     ctx.lineWidth = 2;
     circle(Math.round(x), Math.round(y), 13 + pulse * 2);
+  } else if (t.type === 'npc' && t.npc) {
+    const x = t.npc.x * TILE - cam.x, y = t.npc.y * TILE - cam.y;
+    ctx.strokeStyle = 'rgba(255,236,150,' + (0.5 + 0.4 * pulse).toFixed(3) + ')';
+    ctx.lineWidth = 2;
+    circle(Math.round(x), Math.round(y - 6), 14 + pulse * 2);
   } else if (t.type === 'shop') {
     ctx.strokeStyle = 'rgba(255,236,150,' + (0.45 + 0.3 * pulse).toFixed(3) + ')';
     ctx.lineWidth = 2;
@@ -332,6 +353,8 @@ function drawHUD() {
 
 /* ======================= 操作控件 ======================= */
 function drawToolIcon(id, cx, cy) {
+  // 图片图标（tool_*.png），缺图退回程序化像素画
+  if (drawAsset('tool_' + id, cx - 8, cy - 8, 16, 16)) return;
   ctx.save(); ctx.translate(Math.round(cx), Math.round(cy));
   if (id === 'hoe') { ctx.fillStyle = '#8a5a30'; ctx.fillRect(-1, -4, 2, 8); ctx.fillStyle = '#c2b8a4'; ctx.fillRect(-4, -6, 6, 3); }
   else if (id === 'can') { ctx.fillStyle = '#3f8fc0'; ctx.fillRect(-5, -3, 8, 7); ctx.fillStyle = '#7fd0ff'; ctx.fillRect(-7, -1, 3, 3); ctx.fillStyle = '#2a6a95'; ctx.fillRect(-5, -6, 8, 2); }
@@ -423,6 +446,7 @@ function toggleRow(p, y, w, name, key) {
   const on = !!Settings.d[key];
   lineBtn({ x: p.x + w - 76, y: y + 2, w: 62, h: 22 }, on ? '开' : '关', () => {
     Settings.set(key, !on); bakeMap();
+    if (key === 'music') { if (on) stopBgm(); else startBgm(); }
   }, on ? '#3f7f47' : '#5a5a4a');
 }
 
@@ -439,6 +463,23 @@ function drawModal() {
     ctx.fillText('睡觉后作物成长、动物产出、体力全满', VW / 2, p.y + 72);
     lineBtn({ x: p.x + 30, y: p.y + 92, w: 110, h: 34 }, '睡觉', () => { modal = null; nextDay(); }, '#7a5030');
     lineBtn({ x: p.x + 160, y: p.y + 92, w: 110, h: 34 }, '再逛逛', () => { modal = null; });
+
+  } else if (type === 'npc') {
+    const n = modal.npc;
+    const p = panel(340, 170);
+    drawPanel(p, n.name, '月光牧场 · 村民');
+    // 头像
+    if (!drawAsset(n.img, p.x + 16, p.y + 58, 44, 48)) {
+      ctx.fillStyle = '#c88'; ctx.fillRect(p.x + 24, p.y + 66, 28, 32);
+    }
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.font = '12px sans-serif'; ctx.fillStyle = '#eef3e4';
+    const lines = modal.line || ['……'];
+    for (let i = 0; i < lines.length; i++) ctx.fillText(lines[i], p.x + 74, p.y + 66 + i * 20);
+    lineBtn({ x: p.x + 74, y: p.y + p.h - 46, w: 110, h: 32 }, '再聊一句', () => {
+      const ls = NPC_DEFS[n.id].lines;
+      modal.line = ls[Math.floor(Math.random() * ls.length)];
+    });
+    lineBtn({ x: p.x + 196, y: p.y + p.h - 46, w: 110, h: 32 }, '先这样', () => { modal = null; });
 
   } else if (type === 'dayend') {
     const p = panel(320, 168);
@@ -613,10 +654,11 @@ function drawModal() {
     lineBtn({ x: p.x + p.w / 2 - 60, y: p.y + p.h - 44, w: 120, h: 32 }, '知道了', () => { modal = { type: 'menu' }; });
 
   } else if (type === 'settings') {
-    const p = panel(340, 280);
+    const p = panel(340, 330);
     drawPanel(p, '设置');
     const rows = [
       { name: '音效', key: 'sfx' },
+      { name: '音乐', key: 'music' },
       { name: '点地自动走', key: 'tapMove' },
       { name: '显示地块网格', key: 'showGrid' },
       { name: '自动存档', key: 'autoSave' }
@@ -624,11 +666,11 @@ function drawModal() {
     for (let i = 0; i < rows.length; i++) toggleRow(p, p.y + 50 + i * 34, p.w, rows[i].name, rows[i].key);
     // 摇杆大小
     ctx.textAlign = 'left'; ctx.fillStyle = '#e6eedd'; ctx.font = '12px sans-serif';
-    ctx.fillText('摇杆大小', p.x + 18, p.y + 190);
+    ctx.fillText('摇杆大小', p.x + 18, p.y + 224);
     const lv = Settings.d.joyScale;
-    lineBtn({ x: p.x + 140, y: p.y + 178, w: 56, h: 24 }, '小', () => { Settings.set('joyScale', 0.85); computeLayout(); bakeMap(); }, lv === 0.85 ? '#4f7f47' : '#3a5c37');
-    lineBtn({ x: p.x + 140 + 62, y: p.y + 178, w: 56, h: 24 }, '中', () => { Settings.set('joyScale', 1); computeLayout(); bakeMap(); }, lv === 1 ? '#4f7f47' : '#3a5c37');
-    lineBtn({ x: p.x + 140 + 124, y: p.y + 178, w: 56, h: 24 }, '大', () => { Settings.set('joyScale', 1.2); computeLayout(); bakeMap(); }, lv === 1.2 ? '#4f7f47' : '#3a5c37');
+    lineBtn({ x: p.x + 140, y: p.y + 212, w: 56, h: 24 }, '小', () => { Settings.set('joyScale', 0.85); computeLayout(); bakeMap(); }, lv === 0.85 ? '#4f7f47' : '#3a5c37');
+    lineBtn({ x: p.x + 140 + 62, y: p.y + 212, w: 56, h: 24 }, '中', () => { Settings.set('joyScale', 1); computeLayout(); bakeMap(); }, lv === 1 ? '#4f7f47' : '#3a5c37');
+    lineBtn({ x: p.x + 140 + 124, y: p.y + 212, w: 56, h: 24 }, '大', () => { Settings.set('joyScale', 1.2); computeLayout(); bakeMap(); }, lv === 1.2 ? '#4f7f47' : '#3a5c37');
     lineBtn({ x: p.x + 20, y: p.y + p.h - 48, w: 150, h: 34 }, '清空全部存档', () => resetAllSaves(), '#8a3a30');
     lineBtn({ x: p.x + 170, y: p.y + p.h - 48, w: 150, h: 34 }, '返回', () => { modal = { type: 'menu' }; }, '#4f7f47');
   }

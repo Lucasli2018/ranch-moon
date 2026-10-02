@@ -5,13 +5,14 @@
 
 /* ============================ 应用常量 ============================ */
 const APP_NAME = '月光牧场';
-const APP_VERSION = '1.4.0';
+const APP_VERSION = '1.5.0';
 
 /* ============================ 设置 ============================ */
 const Settings = {
   KEY: 'moonranch.settings.v1',
   def: {
     sfx: true,        // 音效
+    music: true,      // 背景音乐
     tapMove: true,    // 点地自动寻路
     joyScale: 1,      // 摇杆大小 0.85 / 1 / 1.15
     showGrid: false,  // 显示地块网格

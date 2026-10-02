@@ -10,6 +10,7 @@ let sceneKey = 'farm';
 let map = [];            // 当前场景地图瓦片（引用 SCENES[sceneKey].map）
 let cropMap = [];        // 当前场景作物
 let animals = [];        // 当前场景动物
+let npcs = [];           // 当前场景 NPC
 let cam = { x: 0, y: 0 };
 let player = { x: 0, y: 0, vx: 0, vy: 0, dir: 2, anim: 0, moving: false };
 let tool = 'hoe';        // hoe 锄头 / can 水壶 / hand 双手 / axe 斧 / pick 镐
@@ -64,7 +65,7 @@ function buildFarm() {
   for (let x = 2; x <= 14; x++) { if (map[26][x] === T.GRASS) map[26][x] = T.TREE; }
   // 出口路牌
   map[13][29] = T.SIGN;
-  SCENES.farm = { map: map, cropMap: cropMap, animals: [] };
+  SCENES.farm = { map: map, cropMap: cropMap, animals: [], npcs: [makeNpc('keeper', 20.5, 25.5)] };
 }
 
 /* —— 牧场：谷仓 + 围栏动物区，西通农场、东通森林 —— */
@@ -97,7 +98,7 @@ function buildPasture() {
     if (m[y][x] === T.GRASS && (y < 13 || y > 18)) m[y][x] = T.TREE;
   }
   m[12][15] = T.SIGN; m[18][15] = T.SIGN;
-  SCENES.pasture = { map: m, cropMap: cm, animals: makeAnimals() };
+  SCENES.pasture = { map: m, cropMap: cm, animals: makeAnimals(), npcs: [makeNpc('farmer', 22, 19.5)] };
 }
 
 /* —— 森林：密林 + 湖泊，纯采集区 —— */
@@ -121,7 +122,39 @@ function buildForest() {
     m[y][x] = rng() < 0.75 ? T.TREE : T.ROCK;
   }
   m[13][2] = T.SIGN;
-  SCENES.forest = { map: m, cropMap: cm, animals: [] };
+  SCENES.forest = { map: m, cropMap: cm, animals: [], npcs: [makeNpc('woodcutter', 4, 13.5)] };
+}
+
+/* ======================= NPC ======================= */
+const NPC_DEFS = {
+  keeper: {
+    name: '店长阿花', img: 'npc_keeper',
+    lines: [
+      ['欢迎光临月光杂货铺！', '柜台在门口，按「使用」就能交易。'],
+      ['种子要按季节买哦，', '换季了去年的种子就种不成了。'],
+      ['木材和石头我也收，', '价钱写在「卖东西」那一页。']
+    ]
+  },
+  farmer: {
+    name: '老约伯', img: 'npc_farmer',
+    lines: [
+      ['想要鸡牛羊？商店「牧场」页签，', '买下后它们每天都会产东西。'],
+      ['动物产的东西要亲手去收，', '走近它按「使用」就行。'],
+      ['我的羊脾气可大了，', '每天只肯给你一撮羊毛。']
+    ]
+  },
+  woodcutter: {
+    name: '小柯', img: 'npc_woodcutter',
+    lines: [
+      ['森林里的树和石头随便砍，', '明天又会冒出来。'],
+      ['这片湖里的鱼还没做钓鱼竿……', '等下个版本吧。'],
+      ['砍树累，记得回屋睡觉。']
+    ]
+  }
+};
+function makeNpc(id, x, y) {
+  const d = NPC_DEFS[id];
+  return { id: id, name: d.name, img: d.img, x: x, y: y };
 }
 
 /* ======================= 动物 ======================= */
@@ -142,7 +175,7 @@ function switchScene(key, sx, sy) {
   if (!SCENES[key] || key === sceneKey) return;
   sceneKey = key;
   const sc = SCENES[key];
-  map = sc.map; cropMap = sc.cropMap; animals = sc.animals;
+  map = sc.map; cropMap = sc.cropMap; animals = sc.animals; npcs = sc.npcs || [];
   player.x = sx * TILE; player.y = sy * TILE;
   player.moving = false; player.dir = (sx < 3) ? 1 : 3;
   cam.x = 0; cam.y = 0;
@@ -172,7 +205,7 @@ function newGame(seed, slot) {
   sceneKey = 'farm';
   buildFarm(); buildPasture(); buildForest();
   const sc = SCENES.farm;
-  map = sc.map; cropMap = sc.cropMap; animals = sc.animals;
+  map = sc.map; cropMap = sc.cropMap; animals = sc.animals; npcs = sc.npcs || [];
   return S;
 }
 
@@ -216,11 +249,11 @@ function loadSave(slot) {
     for (const k of SCENE_LIST) if (!SCENES[k]) { buildSceneFallback(k); }
   } else if (d.map) {
     // v2 单场景老存档：农场用旧数据，牧场/森林现生成（老档动物未开放购买，全部视为未拥有）
-    SCENES.farm = { map: d.map, cropMap: d.cropMap || blankGrid(null), animals: [] };
+    SCENES.farm = { map: d.map, cropMap: d.cropMap || blankGrid(null), animals: [], npcs: [makeNpc('keeper', 20.5, 25.5)] };
     buildPasture(); buildForest();
   } else return false;
   const sc = SCENES[sceneKey] || SCENES.farm;
-  map = sc.map; cropMap = sc.cropMap; animals = sc.animals;
+  map = sc.map; cropMap = sc.cropMap; animals = sc.animals; npcs = sc.npcs || [];
   sceneKey = SCENES[sceneKey] ? sceneKey : 'farm';
   if (d.p) { player.x = d.p.x; player.y = d.p.y; player.dir = d.p.dir || 2; }
   // 地图布局可能随版本变化：落点卡在实心里就送回出生点

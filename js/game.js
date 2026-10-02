@@ -267,6 +267,11 @@ function init() {
   /* 图片素材：加载完成后重烘焙地图（加载前用程序化兜底） */
   loadAssets(function () { bakeMap(); });
 
+  /* BGM：首次任意交互后启动（浏览器要求音频须由用户手势触发） */
+  const kickBgm = function () { startBgm(); };
+  window.addEventListener('pointerdown', kickBgm, { once: true });
+  window.addEventListener('keydown', kickBgm, { once: true });
+
   /* 调试 / 自动化接口 */
   window.MR = {
     state: () => S, player: player, tool: () => tool,

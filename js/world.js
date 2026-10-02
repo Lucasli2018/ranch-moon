@@ -141,11 +141,16 @@ function findTarget() {
     const c = cropMap[ty][tx];
     return map[ty][tx] === T.FARM && c && !c.wetted;
   });
-  // 双手：优先成熟作物 → 动物 → 商店 → 空地播种
+  // 双手：优先成熟作物 → NPC → 动物 → 商店 → 空地播种
   const mature = scanTiles(1.35, (tx, ty) => {
     const c = cropMap[ty][tx]; return c && c.stage >= 4;
   });
   if (mature) return { tx: mature.tx, ty: mature.ty, type: 'crop' };
+  const np = npcs.reduce((best, n) => {
+    const d = Math.hypot(n.x * TILE - player.x, n.y * TILE - player.y);
+    return (best === null || d < best.d) ? { d: d, n: n } : best;
+  }, null);
+  if (np && np.d < 28) return { type: 'npc', npc: np.n };
   const an = animals.reduce((best, a) => {
     const d = Math.hypot(a.x * TILE - player.x, a.y * TILE - player.y);
     return (a.owned && (best === null || d < best.d)) ? { d: d, a: a } : best;
@@ -170,6 +175,12 @@ function doUse() {
   lastTarget = t;
   if (!t) { toastMsg('这里没什么可做的'); return; }
   if (t.type === 'shop') { openShop(); return; }
+  if (t.type === 'npc') {
+    const lines = t.npc.lines || NPC_DEFS[t.npc.id].lines;
+    modal = { type: 'npc', npc: t.npc, line: lines[Math.floor(Math.random() * lines.length)] };
+    beep(620, .06); beep(780, .06);
+    return;
+  }
   if (t.type === 'animal') {
     if (!t.a.owned) return;
     if (!t.a.have) { toastMsg(t.a.name + '现在没有产出，明天再来看看'); return; }
