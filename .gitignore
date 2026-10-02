@@ -6,5 +6,5 @@ _*.png
 _*.jpg
 notify_msg.txt
 # AI 生成的素材原图（未裁剪的 1024px 源图，本地保留不入库）
-assets/Pixel_art_*.png
-assets/_preview.png
+# assets/Pixel_art_*.png
+# assets/_preview.png
