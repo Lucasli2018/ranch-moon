@@ -77,7 +77,7 @@ function pointerDown(e) {
   }
   // 工具格
   for (let i = 0; i < L.tools.length; i++) {
-    if (inRect(p, L.tools[i])) { tool = TOOLS[i]; beep(700, .04); return; }
+    if (inRect(p, L.tools[i])) { switchTool(TOOLS[i]); return; }
   }
   // 使用键
   if (Math.hypot(p.x - L.act.cx, p.y - L.act.cy) <= L.act.r + 6) { doUse(); return; }
@@ -149,11 +149,18 @@ const KEY_DIR = {
 window.addEventListener('keydown', function (e) {
   const d = KEY_DIR[e.code];
   if (d) { inputs[d] = true; e.preventDefault(); return; }
-  if (e.code >= 'Digit1' && e.code <= 'Digit5') {
-    tool = TOOLS[parseInt(e.code.slice(5), 10) - 1]; beep(700, .04); return;
+  // 1~6（TOOLS 长度变了别写死上限，写死就会漏掉第 6 格钓竿）
+  if (e.code.indexOf('Digit') === 0) {
+    const i = parseInt(e.code.slice(5), 10) - 1;
+    if (i >= 0 && i < TOOLS.length) { switchTool(TOOLS[i]); return; }
   }
   if (e.code === 'Space' || e.code === 'KeyE') { doUse(); e.preventDefault(); return; }
-  if (e.code === 'Escape') { modal ? (modal = null) : openMenu(); return; }
+  if (e.code === 'KeyF') { modal = { type: 'profile' }; return; }
+  if (e.code === 'Escape') {
+    if (fish.st !== 'idle') { cancelFishing(); return; }   // 钓鱼中 Esc = 收竿，不是关弹窗
+    modal ? (modal = null) : openMenu();
+    return;
+  }
   if (e.code === 'KeyB') { openBag(); return; }
 });
 window.addEventListener('keyup', function (e) {
@@ -166,6 +173,7 @@ function update(dt) {
   frameNo++;
   if (toast.t > 0) toast.t -= dt;
   updateDust(dt);
+  updateFishing(dt);
   updateTarget();
 
   if (!modal) {
@@ -179,10 +187,14 @@ function update(dt) {
     }
   }
 
-  // 移动方向
+  // 移动方向（钓鱼中锁住：钓竿抛出后角色必须站在原地，否则浮标会脱手）
   let dx = 0, dy = 0;
   if (sceneCooldown > 0) sceneCooldown -= dt;
-  if (joy.active) {
+  if (fish.st !== 'idle') {
+    joy.active = false; joy.ox = 0; joy.oy = 0;
+    tapTarget = null;
+    player.moving = false;
+  } else if (joy.active) {
     // 摇杆：ox/oy 即方向向量（-1..1），带死区防误触
     const dz = 0.18;
     let jx = joy.ox, jy = joy.oy;
@@ -203,7 +215,7 @@ function update(dt) {
     }
   }
   if (dx && dy) { const k = Math.SQRT1_2; dx *= k; dy *= k; }
-  player.moving = !!(dx || dy);
+  if (fish.st === 'idle') player.moving = !!(dx || dy);
 
   if (dx || dy) {
     if (dy < -0.3) player.dir = 0; else if (dy > 0.3) player.dir = 2;
@@ -333,7 +345,16 @@ function init() {
     gold: function (n) { S.gold = n; }, crop: () => cropMap, tile: () => map,
     mapSize: function () { return [MAP_W, MAP_H]; },
     close: closeDayEnd, seed: function (id) { S.seedChoice = id; },
-    plant: function (tx, ty, id, stage, wet) { map[ty][tx] = T.FARM; cropMap[ty][tx] = { id: id, stage: stage || 0, wetted: !!wet }; }
+    plant: function (tx, ty, id, stage, wet) { map[ty][tx] = T.FARM; cropMap[ty][tx] = { id: id, stage: stage || 0, wetted: !!wet }; },
+    /* v1.7.0：钓鱼 / 事件 / 统计 的自动化钩子 */
+    fish: function () { return fish; },
+    cast: function () { switchTool('rod'); castLine(); },
+    waterAt: function (tx, ty) { return waterDepth(tx, ty); },
+    event: function (id) { S.event = id; },
+    profile: function () { modal = { type: 'profile' }; },
+    ev: ev, flow: function () { return S.stats.flow; },
+    scene: function () { return sceneKey; },
+    goto: function (k, x, y) { switchScene(k, x, y); }
   };
 
   if (!started) { started = true; requestAnimationFrame(frame); }
