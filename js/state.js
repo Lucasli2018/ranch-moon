@@ -221,7 +221,14 @@ function newGame(seed, slot) {
     year: 1, season: 0, day: 1, hour: 6, minute: 0,
     gold: 500, stamina: 100, staminaMax: 100,
     bag: [], seedBag: [], seedChoice: null,
-    stats: { harvest: 0, earned: 0, days: 1, watered: 0 }
+    event: 'e_sow',                 // 开局即「播种节」，第一季就让玩家撞见事件系统
+    stats: {
+      harvest: 0, earned: 0, days: 1, watered: 0,
+      wood: 0, stone: 0,
+      flow: { earn: 0, spend: 0 },  // 当日收支
+      byCrop: {},                   // 各作物累计产量
+      fish: {}, fishKinds: {}, fishCount: 0
+    }
   };
   sceneKey = 'farm';
   buildFarm(); buildPasture(); buildForest();
@@ -253,6 +260,7 @@ function loadSave(slot) {
   S = d.s;
   curSlot = d.slot || slot;
   sceneKey = (d.p && d.p.scene) || 'farm';
+  migrateState();
   if (d.scenes && d.scenes.farm) {
     // v3 多场景存档
     for (const k in d.scenes) {
@@ -290,3 +298,22 @@ function deleteSave(slot) {
   Save.remove(slot);
 }
 function hasSaveNow() { return Save.hasSave(); }
+
+/* v1.6.x → v1.7.0 存档迁移：老档缺的新字段一律补默认值，
+   否则档案面板 / 事件 / 鱼图鉴读老档会直接 undefined 崩 */
+function migrateState() {
+  S.stats = S.stats || {};
+  const st = S.stats;
+  ['harvest', 'earned', 'days', 'watered', 'wood', 'stone', 'fishCount'].forEach(function (k) {
+    if (typeof st[k] !== 'number') st[k] = 0;
+  });
+  if (!st.flow) st.flow = { earn: 0, spend: 0 };
+  if (typeof st.flow.earn !== 'number') st.flow.earn = 0;
+  if (typeof st.flow.spend !== 'number') st.flow.spend = 0;
+  if (!st.byCrop) st.byCrop = {};
+  if (!st.fish) st.fish = {};
+  if (!st.fishKinds) st.fishKinds = {};
+  if (S.event !== undefined && S.event !== null && !EVENT_MAP[S.event]) S.event = null;
+  if (!Array.isArray(S.bag)) S.bag = [];
+  if (!Array.isArray(S.seedBag)) S.seedBag = [];
+}

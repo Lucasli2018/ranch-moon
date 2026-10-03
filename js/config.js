@@ -86,6 +86,48 @@ const SEASON_TINT = {
 };
 
 /* ======================= 工具 ======================= */
-const TOOLS = ['hoe', 'can', 'hand', 'axe', 'pick'];
-const TOOL_NAME = { hoe: '锄头', can: '水壶', hand: '双手', axe: '斧头', pick: '镐子' };
-const USE_COST = { hoe: 5, can: 3, axe: 6, pick: 6, harvest: 4, gather: 2 };
+const TOOLS = ['hoe', 'can', 'hand', 'axe', 'pick', 'rod'];
+const TOOL_NAME = { hoe: '锄头', can: '水壶', hand: '双手', axe: '斧头', pick: '镐子', rod: '钓竿' };
+const USE_COST = { hoe: 5, can: 3, axe: 6, pick: 6, harvest: 4, gather: 2, rod: 5 };
+
+/* ======================= 鱼类图鉴 ======================= */
+/* rarity: 1 常见 / 2 少见 / 3 稀有（价格与出现率随之为之）
+   season: 可钓到的季节，字符串 '全' = 四季
+   depth : 要求的离岸纵深（waterDepth = 到最近陆地的 8 邻域距离）。
+           实测（配合 rodCastTile 射程 6 格远投）：
+             农场溪流 1~2 格宽 → 全程 depth 1，只钓得到 1★ 鲫/鲈
+             月影湖   → 岸边 1、朝湖心远投能到 2~3
+           所以想要 2★/3★ 必须去月影森林，站在湖边朝湖心方向投。 */
+const FISH = [
+  { id: 'f_crucian', name: '月光鲫', rarity: 1, season: '全', depth: 0, price: 45, col: '#c8d6d0', belly: '#eef4f0', tail: '#8fa39a', w: 13, h: 7 },
+  { id: 'f_perch', name: '林溪鲈', rarity: 1, season: ['春', '夏', '秋'], depth: 1, price: 70, col: '#8fae62', belly: '#dfe8c4', tail: '#6b8a44', w: 14, h: 7 },
+  { id: 'f_carp', name: '月影鲤', rarity: 2, season: ['春', '夏'], depth: 2, price: 150, col: '#e0a83a', belly: '#fbe6c0', tail: '#c07a2a', w: 16, h: 8 },
+  { id: 'f_trout', name: '虹斑鳟', rarity: 2, season: ['春', '秋', '冬'], depth: 2, price: 185, col: '#5f9fb8', belly: '#e6a8a0', tail: '#3f7a92', w: 15, h: 8 },
+  { id: 'f_catfish', name: '夜行鲶', rarity: 2, season: ['夏', '秋'], depth: 2, price: 210, col: '#5a4a3a', belly: '#c8b89a', tail: '#3a2e24', w: 18, h: 8 },
+  { id: 'f_pike', name: '湖心梭鱼', rarity: 3, season: ['夏'], depth: 3, price: 380, col: '#4a7a5a', belly: '#d0e0b0', tail: '#2f5a3a', w: 19, h: 8 },
+  { id: 'f_glass', name: '琉璃鱼', rarity: 3, season: ['冬'], depth: 3, price: 460, col: '#9fd4e8', belly: '#e8faff', tail: '#6fa8c8', w: 16, h: 7 },
+  { id: 'f_moon', name: '月光鱼', rarity: 3, season: '全', depth: 4, price: 900, col: '#f0e0a0', belly: '#fff8d8', tail: '#c9a83a', w: 17, h: 9 }
+];
+const FISH_MAP = {}; FISH.forEach(f => { FISH_MAP[f.id] = f; });
+/* 鱼挂进 ITEMS → itemPrice / itemName / 卖东西面板 / 商店全自动认得，不用改任何调用点 */
+FISH.forEach(f => { ITEMS[f.id] = { name: f.name, price: f.price, fish: true }; });
+
+/* ======================= 季节事件 / 节日 ======================= */
+/* effect 字段（由 world.js 的 ev() 钩子统一消费，别在别处硬编码）
+   seedMul  买种子价格倍率     sellMul  卖价倍率        stamMul  体力消耗倍率
+   animalMul 动物价格倍率       bite    必定咬钩         extra    收获额外产出
+   noGrow   作物当天不成长 */
+const EVENTS = [
+  { id: 'e_sow', name: '播种节', season: 0, ico: 'sack', desc: '集市促销，全部种子 8 折', effect: { seedMul: 0.8 } },
+  { id: 'e_night', name: '夜市', season: 1, ico: 'shop', desc: '夜市开张，卖出价 +40%', effect: { sellMul: 1.4 } },
+  { id: 'e_harvest', name: '丰收祭', season: 2, ico: 'star', desc: '祭典大赏，卖出价 +60%、收获额外 +1', effect: { sellMul: 1.6, extra: 1 } },
+  { id: 'e_stove', name: '暖炉市', season: 3, ico: 'house', desc: '炉火全天不熄，体力消耗减半', effect: { stamMul: 0.5 } },
+  { id: 'e_carnival', name: '动物嘉年华', season: -1, ico: 'barn', desc: '幼崽展销，动物一律 5 折', effect: { animalMul: 0.5 } },
+  { id: 'e_bite', name: '鱼群过境', season: -1, ico: 'fish', desc: '湖面炸开，抛竿必定咬钩', effect: { bite: 1 } },
+  { id: 'e_blight', name: '阴雨连绵', season: -1, ico: 'drop', desc: '雨水泡了根，今天作物停止生长', effect: { noGrow: 1 } }
+];
+const EVENT_MAP = {}; EVENTS.forEach(e => { EVENT_MAP[e.id] = e; });
+/* 季节主事件：每季第一天必出，给玩家一个节奏点 */
+const SEASON_EVENT = { 0: 'e_sow', 1: 'e_night', 2: 'e_harvest', 3: 'e_stove' };
+/* 随机事件池：其余日子 30% 概率撞上（不出季节专属，避免和主事件撞车） */
+const RANDOM_EVENTS = ['e_carnival', 'e_bite', 'e_blight'];

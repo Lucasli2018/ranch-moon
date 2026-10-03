@@ -48,8 +48,11 @@ function updateDust(dt) {
 
 /* ---- 格式化 ---- */
 function fmtGold(n) { return '¥ ' + n; }
-function fmtClock(hour) {
-  const h = Math.floor(hour), m = Math.floor((hour % 1) * 60);
+/* 传 (hour, minute)：minute 单独累加在 S.minute，不是 hour 的小数部分。
+   旧签名只按 hour % 1 取分钟 → HUD 时钟的分钟永远是 00，已修 */
+function fmtClock(hour, minute) {
+  const h = Math.floor(hour);
+  const m = (minute === undefined || minute === null) ? Math.floor((hour % 1) * 60) : Math.floor(minute);
   return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m;
 }
 function fmtWhen(ts) {
