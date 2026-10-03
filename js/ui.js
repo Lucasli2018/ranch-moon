@@ -31,6 +31,12 @@ function computeLayout() {
 function openShop() { modal = { type: 'shop', tab: 'seed', page: 0 }; beep(520, .08); }
 function openBag() { modal = { type: 'bag' }; beep(480, .08); }
 function openMenu() { modal = { type: 'menu' }; beep(480, .08); }
+/* 切工具：钓鱼中切走 = 顺手收竿（不静默吞掉，否则玩家以为卡住） */
+function switchTool(id) {
+  if (tool === id) return;
+  if (fish.st !== 'idle') cancelFishing(true);
+  tool = id; beep(700, .04);
+}
 function hudBtn(id) {
   if (id === 'shop') openShop();
   else if (id === 'bag') openBag();

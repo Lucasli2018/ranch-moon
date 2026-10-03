@@ -157,6 +157,35 @@ const ICONS = {
     g.fillStyle = '#e8d8b0'; g.fillRect(4, 7, 8, 7);
     g.fillStyle = '#8a5a30'; g.fillRect(6, 10, 4, 4);
     g.fillStyle = '#ffd24a'; g.fillRect(5, 8, 2, 2);
+  },
+
+  /* ---------------- v1.7.0 新增 ---------------- */
+  fish: function (g) {                                  // 鱼（鱼群过境 / 图鉴）
+    g.fillStyle = '#5f9fb8';
+    g.fillRect(4, 6, 8, 5); g.fillRect(3, 7, 2, 3);
+    g.fillStyle = '#e6a8a0'; g.fillRect(5, 9, 6, 1);
+    g.fillStyle = '#3f7a92'; g.fillRect(1, 7, 3, 3); g.fillRect(2, 6, 1, 1);
+    g.fillStyle = '#eaf4ff'; g.fillRect(10, 7, 2, 2);
+  },
+  rod: function (g) {                                   // 钓竿
+    g.fillStyle = '#e8e0c0';
+    for (let i = 0; i < 7; i++) g.fillRect(12 - i, 2 + i, 1, 1);
+    g.fillStyle = '#8a5a30'; g.fillRect(3, 12, 8, 2); g.fillRect(3, 9, 2, 4);
+    g.fillStyle = '#e8604a'; g.fillRect(3, 8, 2, 2);
+  },
+  trophy: function (g) {                                // 奖杯（农场档案）
+    g.fillStyle = '#e8c96a'; g.fillRect(4, 3, 8, 6); g.fillRect(5, 2, 6, 1);
+    g.fillStyle = '#c9962c'; g.fillRect(5, 8, 6, 1); g.fillRect(4, 12, 8, 2);
+    g.fillStyle = '#e8c96a'; g.fillRect(7, 9, 2, 3);
+    g.fillStyle = '#c9962c'; g.fillRect(2, 4, 2, 2); g.fillRect(12, 4, 2, 2);
+  },
+  ledger: function (g) {                                // 账本（统计 / 当日收支）
+    g.fillStyle = '#8a5a30'; g.fillRect(2, 2, 12, 12);
+    g.fillStyle = '#f2ecd8'; g.fillRect(3, 3, 10, 10);
+    g.fillStyle = '#9aa08c';
+    g.fillRect(5, 5, 6, 1); g.fillRect(5, 7, 6, 1); g.fillRect(5, 9, 3, 1);
+    g.fillStyle = '#6fbf5a'; g.fillRect(10, 9, 2, 3);
+    g.fillStyle = '#d96a4a'; g.fillRect(5, 10, 2, 2);
   }
 };
 
